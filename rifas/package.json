@@ -1,0 +1,7 @@
+{
+  "name": "rifas-online",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Rifas en línea con Supabase, Netlify y pagos AZUL (tarjeta, Apple Pay, Google Pay)",
+  "engines": { "node": ">=18" }
+}

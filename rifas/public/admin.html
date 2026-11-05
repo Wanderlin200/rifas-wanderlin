@@ -1,0 +1,162 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="robots" content="noindex" />
+  <title>{SITE} · Panel</title>
+  <link rel="icon" href="/assets/favicon.png" />
+  <link rel="stylesheet" href="/assets/styles.css" />
+  <style>
+    .stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin: 16px 0; }
+    .stat { padding: 14px 16px; }
+    .stat b { display: block; font: 800 24px -apple-system, BlinkMacSystemFont, 'SF Pro Display', Inter, sans-serif; }
+    .stat span { color: var(--muted); font-size: 13px; }
+    .admin-list .item { display: grid; grid-template-columns: 70px 1fr auto; gap: 14px; padding: 14px; align-items: center; }
+    .admin-list .item + .item { border-top: 1px solid var(--line); }
+    .thumb { width: 70px; height: 52px; border-radius: 10px; background: var(--bg-2) center/cover; }
+    .badge { font-size: 11px; font-weight: 700; padding: 3px 8px; border-radius: 99px; text-transform: uppercase; letter-spacing: .04em; }
+    .b-draft { background: #2c2c2e; color: #aeaeb2; } .b-active { background: rgba(47,210,127,.15); color: var(--green); }
+    .b-closed { background: rgba(79,140,255,.15); color: var(--blue); } .b-drawn { background: rgba(255,255,255,.18); color: var(--gold); }
+    .b-paid { background: rgba(47,210,127,.15); color: var(--green); } .b-pending { background: rgba(255,255,255,.15); color: var(--gold); }
+    .b-declined, .b-cancelled, .b-expired { background: rgba(255,90,106,.12); color: #ff9aa5; }
+    .actions { display: flex; gap: 8px; flex-wrap: wrap; }
+    table { width: 100%; border-collapse: collapse; font-size: 14px; }
+    th, td { text-align: left; padding: 10px 8px; border-bottom: 1px solid var(--line); vertical-align: top; }
+    th { color: var(--muted); font-weight: 500; font-size: 12px; text-transform: uppercase; letter-spacing: .04em; }
+    .tbl-wrap { overflow-x: auto; }
+    .nums-cell { max-width: 220px; font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', Inter, sans-serif; font-size: 12px; color: var(--gold); word-break: break-word; }
+
+    /* Ruleta */
+    #wheelModal .card { max-width: 640px; text-align: center; }
+    .wheel-box { position: relative; width: min(480px, 100%); margin: 10px auto; aspect-ratio: 1; }
+    .wheel-box canvas { width: 100%; height: 100%; }
+    .pointer { position: absolute; top: -6px; left: 50%; transform: translateX(-50%); width: 0; height: 0;
+      border-left: 18px solid transparent; border-right: 18px solid transparent; border-top: 34px solid #fff; filter: drop-shadow(0 0 1px #000) drop-shadow(0 0 1px #000) drop-shadow(0 4px 6px rgba(0,0,0,.6)); z-index: 2; }
+    .hub { position: absolute; inset: 0; margin: auto; width: 22%; height: 22%; border-radius: 50%; background: radial-gradient(circle at 35% 30%, #ffffff, #8e8e93); display: grid; place-items: center; font: 800 16px -apple-system, BlinkMacSystemFont, 'SF Pro Display', Inter, sans-serif; color: #000000; box-shadow: 0 6px 20px rgba(0,0,0,.5); }
+    #confetti { position: fixed; inset: 0; pointer-events: none; z-index: 100; }
+    .winner-reveal { animation: pop .5s cubic-bezier(.2,1.6,.4,1); }
+    @keyframes pop { from { transform: scale(.6); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+    @media (max-width: 720px) { .stats { grid-template-columns: repeat(2, 1fr); } .admin-list .item { grid-template-columns: 56px 1fr; } .admin-list .item .actions { grid-column: 1 / -1; } }
+  </style>
+</head>
+<body>
+  <header class="top">
+    <div class="wrap">
+      <a class="logo" href="/admin.html"><img src="/assets/logo-wanderlin.png" alt="Wanderlin iPhone" />&nbsp;<span class="muted" style="font:500 14px Inter">Panel</span></a>
+      <nav class="nav"><a href="/" target="_blank">Ver sitio</a><a href="#" id="logout" class="hidden">Salir</a></nav>
+    </div>
+  </header>
+
+  <main class="wrap" style="padding-bottom:60px">
+    <!-- LOGIN -->
+    <div id="loginView" class="card panel hidden" style="max-width:400px;margin:60px auto">
+      <h2>Iniciar sesión</h2>
+      <form id="loginForm">
+        <label>Correo</label><input id="lemail" type="email" required />
+        <label>Contraseña</label><input id="lpass" type="password" required />
+        <div id="lerr" class="err hidden"></div>
+        <button class="btn btn-gold btn-block" style="margin-top:16px">Entrar</button>
+      </form>
+    </div>
+
+    <!-- LISTA DE RIFAS -->
+    <div id="listView" class="hidden">
+      <div class="section-title"><h2>Mis rifas</h2><button class="btn btn-gold" id="newBtn">+ Nueva rifa</button></div>
+      <div class="card admin-list" id="list"></div>
+    </div>
+
+    <!-- DETALLE DE RIFA -->
+    <div id="raffleView" class="hidden">
+      <div class="section-title" style="flex-wrap:wrap;gap:10px">
+        <div><a href="#" id="back" class="muted" style="text-decoration:none">← Mis rifas</a><h2 id="rTitle" style="margin-top:6px"></h2></div>
+        <div class="actions" id="rActions"></div>
+      </div>
+      <div class="stats" id="rStats"></div>
+      <div class="card panel">
+        <div class="section-title" style="margin:0 0 10px;flex-wrap:wrap;gap:10px">
+          <h3 style="margin:0">Ventas</h3>
+          <div class="actions">
+            <select id="fStatus" style="width:auto"><option value="">Todas</option><option value="paid" selected>Pagadas</option><option value="pending">Pendientes</option><option value="declined">Rechazadas</option></select>
+            <input id="fSearch" placeholder="Buscar nombre, teléfono o número" style="width:240px" />
+            <button class="btn btn-ghost btn-sm" id="csvBtn">Exportar CSV</button>
+          </div>
+        </div>
+        <div class="tbl-wrap"><table><thead><tr><th>#</th><th>Cliente</th><th>Números</th><th>Monto</th><th>Estado</th><th>Fecha</th><th></th></tr></thead><tbody id="orders"></tbody></table></div>
+      </div>
+    </div>
+  </main>
+
+  <!-- MODAL CREAR / EDITAR -->
+  <div class="modal wide hidden" id="editModal">
+    <div class="card">
+      <h2 id="editTitle">Nueva rifa</h2>
+      <form id="editForm">
+        <label>Título</label><input id="eTitle" required placeholder="Ej. iPhone 17 Pro Max" />
+        <div class="row">
+          <div><label>Premio</label><input id="ePrize" placeholder="iPhone 17 Pro Max 256GB" /></div>
+          <div><label>Enlace (slug)</label><input id="eSlug" required pattern="[a-z0-9-]+" placeholder="iphone-17" /></div>
+        </div>
+        <label>Descripción y bases</label><textarea id="eDesc" placeholder="Detalles del premio, fecha del sorteo, cómo se entrega…"></textarea>
+        <label>Imagen</label><input id="eImg" type="file" accept="image/*" />
+        <div class="row">
+          <div><label>Precio por boleto</label><input id="ePrice" type="number" min="1" step="0.01" required /></div>
+          <div><label>Moneda</label><select id="eCur"><option value="DOP">RD$ (DOP)</option><option value="USD">US$ (USD)</option></select></div>
+        </div>
+        <div class="row">
+          <div><label>Cantidad de boletos</label><input id="eTotal" type="number" min="2" max="100000" value="100" required /></div>
+          <div><label>Máximo por compra</label><input id="eMax" type="number" min="1" value="50" required /></div>
+        </div>
+        <div class="row">
+          <div><label>Modalidad</label><select id="eMode"><option value="both">Elegir números y al azar</option><option value="pick">Solo elegir números</option><option value="random">Solo al azar</option></select></div>
+          <div><label>Fecha del sorteo</label><input id="eDate" type="datetime-local" /></div>
+        </div>
+        <label>Estado</label>
+        <select id="eStatus"><option value="draft">Borrador (oculta)</option><option value="active">Activa (a la venta)</option><option value="closed">Venta cerrada</option></select>
+        <div id="eErr" class="err hidden"></div>
+        <div class="row" style="margin-top:18px">
+          <button type="button" class="btn btn-ghost" data-close>Cancelar</button>
+          <button class="btn btn-gold" id="eSave">Guardar</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- MODAL VENTA MANUAL -->
+  <div class="modal hidden" id="manualModal">
+    <div class="card">
+      <h2>Venta manual</h2>
+      <p class="muted" style="font-size:14px">Para pagos en efectivo o transferencia. Los boletos quedan vendidos al instante.</p>
+      <form id="manualForm">
+        <label>Nombre</label><input id="mName" required />
+        <label>Teléfono</label><input id="mPhone" required />
+        <label>Números (separados por coma) — o deja vacío y pon cantidad</label><input id="mNums" placeholder="07, 23, 88" />
+        <label>Cantidad al azar</label><input id="mQty" type="number" min="1" />
+        <div id="mErr" class="err hidden"></div>
+        <div class="row" style="margin-top:16px"><button type="button" class="btn btn-ghost" data-close>Cancelar</button><button class="btn btn-gold">Registrar venta</button></div>
+      </form>
+    </div>
+  </div>
+
+  <!-- MODAL RULETA -->
+  <div class="modal hidden" id="wheelModal">
+    <div class="card">
+      <h2 id="wTitle">Elegir ganador</h2>
+      <p class="muted" id="wInfo" style="margin:0"></p>
+      <div class="wheel-box"><div class="pointer"></div><canvas id="wheel" width="960" height="960"></canvas><div class="hub">GIRA</div></div>
+      <div id="wResult"></div>
+      <div class="row" id="wBtns" style="margin-top:10px">
+        <button class="btn btn-ghost" data-close>Cerrar</button>
+        <button class="btn btn-gold" id="spinBtn">🎡 ¡Girar la ruleta!</button>
+      </div>
+    </div>
+  </div>
+  <canvas id="confetti" class="hidden"></canvas>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
+  <script src="/assets/config.js"></script>
+  <script src="/assets/comun.js"></script>
+  <script src="/assets/ruleta.js"></script>
+  <script src="/assets/admin.js"></script>
+</body>
+</html>

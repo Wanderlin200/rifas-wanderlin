@@ -1,0 +1,78 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Rifas · {SITE}</title>
+  <meta name="description" content="Participa en nuestras rifas y paga con tarjeta, Apple Pay o Google Pay." />
+  <link rel="icon" href="/assets/favicon.png" />
+  <link rel="stylesheet" href="/assets/styles.css" />
+</head>
+<body>
+  <header class="top">
+    <div class="wrap">
+      <a class="logo" href="/"><img src="/assets/logo-wanderlin.png" alt="Wanderlin iPhone" /></a>
+      <nav class="nav">
+        <a href="#activas">Rifas</a>
+        <a href="#ganadores" class="hide-sm">Ganadores</a>
+        <a data-wa target="_blank" rel="noopener">WhatsApp</a>
+      </nav>
+    </div>
+  </header>
+
+  <main class="wrap">
+    <section class="hero">
+      <img class="hero-logo" src="/assets/logo-wanderlin.png" alt="Wanderlin iPhone" />
+      <h1>Tu próximo iPhone<br>puede costar un <span>boleto</span>.</h1>
+      <p>Participa en las rifas oficiales de Wanderlin iPhone. Elige tus números de la suerte o deja que el sistema los escoja por ti.</p>
+      <div class="pay-badges">
+        <span>Apple Pay</span><span>Google Pay</span><span>Visa</span><span>Mastercard</span>
+      </div>
+    </section>
+
+    <div class="section-title" id="activas"><h2>Rifas activas</h2></div>
+    <div class="grid" id="activeList"><div class="empty">Cargando rifas…</div></div>
+
+    <div class="section-title" id="ganadores"><h2>Rifas finalizadas</h2></div>
+    <div class="grid" id="doneList"></div>
+  </main>
+
+  <footer><div class="wrap">© <span data-year></span> <span data-site></span> · Pagos procesados de forma segura por AZUL.</div></footer>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
+  <script src="/assets/config.js"></script>
+  <script src="/assets/comun.js"></script>
+  <script>
+    async function card(r) {
+      const st = await ticketStats(r.id);
+      const pct = Math.round((st.sold / r.total_tickets) * 100);
+      let tag = '';
+      if (r.status === 'drawn') {
+        const { data: w } = await sb.rpc('public_winner', { p_raffle_id: r.id });
+        tag = w ? `<span class="tag win">🏆 Ganó el #${pad(w.number, r.total_tickets)}</span>` : '';
+      } else if (r.status === 'closed') tag = '<span class="tag">Venta cerrada</span>';
+      else if (r.draw_date) tag = `<span class="tag">Sorteo: ${new Date(r.draw_date).toLocaleDateString('es-DO', { day: 'numeric', month: 'short' })}</span>`;
+
+      return `
+        <a class="card raffle-card" href="/rifa.html?r=${encodeURIComponent(r.slug)}">
+          <div class="img" style="background-image:url('${esc(r.image_url || '')}')">${tag}</div>
+          <div class="body">
+            <h3>${esc(r.title)}</h3>
+            <div class="price">${money(r.ticket_price, r.currency)} <small>por boleto</small></div>
+            <div class="progress"><div style="width:${pct}%"></div></div>
+            <div class="progress-label"><span>${pct}% vendido</span><span>${r.total_tickets - st.sold} disponibles</span></div>
+          </div>
+        </a>`;
+    }
+
+    (async () => {
+      const { data, error } = await sb.from('raffles').select('*').neq('status', 'draft').order('created_at', { ascending: false });
+      if (error) { $('#activeList').innerHTML = `<div class="empty">No se pudieron cargar las rifas.</div>`; return; }
+      const active = data.filter((r) => r.status === 'active');
+      const done = data.filter((r) => r.status !== 'active');
+      $('#activeList').innerHTML = active.length ? (await Promise.all(active.map(card))).join('') : '<div class="empty">No hay rifas activas en este momento. ¡Vuelve pronto!</div>';
+      $('#doneList').innerHTML = done.length ? (await Promise.all(done.map(card))).join('') : '<div class="empty">Aún no hay rifas finalizadas.</div>';
+    })();
+  </script>
+</body>
+</html>

@@ -1,0 +1,122 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>{SITE} · Rifa</title>
+  <link rel="icon" href="/assets/favicon.png" />
+  <link rel="stylesheet" href="/assets/styles.css" />
+</head>
+<body>
+  <header class="top">
+    <div class="wrap">
+      <a class="logo" href="/"><img src="/assets/logo-wanderlin.png" alt="Wanderlin iPhone" /></a>
+      <nav class="nav"><a href="/">← Todas las rifas</a></nav>
+    </div>
+  </header>
+
+  <main class="wrap">
+    <div id="loading" class="empty" style="margin-top:40px">Cargando rifa…</div>
+
+    <div class="detail hidden" id="detail">
+      <!-- Columna izquierda: info -->
+      <div>
+        <div class="hero-img" id="img"></div>
+        <div class="card panel" style="margin-top:16px">
+          <h1 id="title" style="font-size:30px"></h1>
+          <div class="price" id="price"></div>
+          <p class="muted" id="prize" style="margin:.4em 0 0"></p>
+          <div id="countdownBox" class="hidden">
+            <div class="muted" style="margin-top:14px;font-size:13px">El sorteo es en</div>
+            <div class="countdown" id="countdown"></div>
+          </div>
+          <div class="progress" style="margin-top:14px"><div id="bar"></div></div>
+          <div class="progress-label" style="margin-top:6px"><span id="pct"></span><span id="avail"></span></div>
+          <p id="desc" style="white-space:pre-line;margin-top:16px"></p>
+        </div>
+      </div>
+
+      <!-- Columna derecha: compra -->
+      <div>
+        <div id="winnerBox" class="winner-box hidden"></div>
+
+        <div class="card panel" id="buyBox">
+          <h2 style="font-size:20px">Compra tus boletos</h2>
+          <div class="tabs" id="tabs">
+            <button data-m="pick" class="on">Elegir mis números</button>
+            <button data-m="random">Al azar</button>
+          </div>
+
+          <!-- Elegir números -->
+          <div id="pickPane">
+            <div class="numbers-tools">
+              <select id="block"></select>
+              <input id="search" inputmode="numeric" placeholder="Buscar número" />
+              <button class="btn btn-ghost btn-sm" id="lucky" title="Elegir uno al azar">🎲 Suerte</button>
+            </div>
+            <div class="numbers" id="numbers"></div>
+            <div class="legend"><span><i></i>Disponible</span><span><i class="s"></i>Tuyo</span><span><i class="x"></i>Vendido</span></div>
+          </div>
+
+          <!-- Aleatorio -->
+          <div id="randomPane" class="hidden">
+            <label>¿Cuántos boletos quieres?</label>
+            <div class="qty">
+              <button id="minus">−</button>
+              <input id="qty" type="number" min="1" value="1" />
+              <button id="plus">+</button>
+            </div>
+            <div class="quick" id="quick"></div>
+            <p class="muted" style="font-size:13px">El sistema te asignará números disponibles al azar al momento de pagar.</p>
+          </div>
+
+          <div id="chipsWrap" style="margin-top:14px">
+            <div class="muted" style="font-size:13px;margin-bottom:6px">Tus números</div>
+            <div class="chips" id="chips"><span class="muted" style="font-size:13px">Aún no has elegido.</span></div>
+          </div>
+
+          <div class="summary">
+            <div><div class="muted" style="font-size:13px" id="countLabel">0 boletos</div><div class="total" id="total">RD$0</div></div>
+          </div>
+
+          <form id="form" autocomplete="on">
+            <label for="name">Nombre completo</label>
+            <input id="name" name="name" required minlength="3" placeholder="Ej. María Pérez" />
+            <div class="row">
+              <div><label for="phone">Teléfono / WhatsApp</label><input id="phone" name="phone" type="tel" required placeholder="809-000-0000" /></div>
+              <div><label for="email">Correo (opcional)</label><input id="email" name="email" type="email" placeholder="tu@correo.com" /></div>
+            </div>
+            <label style="display:flex;gap:8px;align-items:flex-start;color:var(--muted)">
+              <input type="checkbox" required style="width:auto;margin-top:3px" />
+              <span>Acepto las bases de la rifa y confirmo que soy mayor de 18 años.</span>
+            </label>
+            <div id="err" class="err hidden"></div>
+            <button class="btn btn-gold btn-block" id="payBtn" style="margin-top:14px" disabled>Pagar</button>
+            <div class="secure">🔒 Pago seguro con tarjeta, Apple Pay o Google Pay a través de AZUL</div>
+          </form>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <!-- Modal de pago DEMO -->
+  <div class="modal hidden" id="demoModal">
+    <div class="card">
+      <h2>Modo de prueba</h2>
+      <p class="muted">Todavía no has conectado AZUL. Tus boletos están reservados por 15 minutos. Simula la respuesta del banco:</p>
+      <div class="chips" id="demoChips" style="margin:12px 0"></div>
+      <div class="row">
+        <button class="btn btn-green" id="demoOk">Simular pago aprobado</button>
+        <button class="btn btn-red" id="demoNo">Simular rechazo</button>
+      </div>
+    </div>
+  </div>
+
+  <footer><div class="wrap">© <span data-year></span> <span data-site></span></div></footer>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
+  <script src="/assets/config.js"></script>
+  <script src="/assets/comun.js"></script>
+  <script src="/assets/rifa.js"></script>
+</body>
+</html>

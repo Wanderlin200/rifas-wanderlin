@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>{SITE} · Resultado del pago</title>
+  <link rel="icon" href="/assets/favicon.png" />
+  <link rel="stylesheet" href="/assets/styles.css" />
+</head>
+<body>
+  <header class="top"><div class="wrap"><a class="logo" href="/"><img src="/assets/logo-wanderlin.png" alt="Wanderlin iPhone" /></a></div></header>
+  <main class="wrap">
+    <div class="card result" id="box"><p class="muted">Verificando tu pago…</p></div>
+  </main>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
+  <script src="/assets/config.js"></script>
+  <script src="/assets/comun.js"></script>
+  <script>
+    (async () => {
+      const p = new URLSearchParams(location.search);
+      const id = p.get('orden');
+      const box = $('#box');
+      let o = null;
+      if (id) ({ data: o } = await sb.rpc('order_status', { p_order_id: id }));
+
+      if (o && o.status === 'paid') {
+        const total = o.numbers ? o.numbers.length : 0;
+        box.className = 'card result ok';
+        box.innerHTML = `
+          <div class="icon">✓</div>
+          <h1 style="font-size:26px">¡Pago aprobado!</h1>
+          <p class="muted">Orden #${o.order_number} · ${esc(o.title)} · ${money(o.amount, o.currency)}</p>
+          <div class="muted" style="font-size:13px">Tus números de la suerte</div>
+          <div class="chips">${(o.numbers || []).map((n) => `<span class="chip">${pad(n, o.total)}</span>`).join('')}</div>
+          <p class="muted" style="font-size:13px">Toma una captura de esta pantalla como comprobante.</p>
+          <a class="btn btn-gold" href="/rifa.html?r=${encodeURIComponent(o.slug)}">Volver a la rifa</a>
+          <a class="btn btn-ghost" data-wa target="_blank" style="margin-left:6px">Escríbenos</a>`;
+      } else {
+        const msg = { cancelado: 'Cancelaste el pago.', rechazado: 'El banco rechazó el pago.', error: 'No pudimos verificar el pago.' }[p.get('estado')] || 'El pago no se completó.';
+        box.className = 'card result bad';
+        box.innerHTML = `
+          <div class="icon">✕</div>
+          <h1 style="font-size:26px">${msg}</h1>
+          <p class="muted">${p.get('estado') === 'error'
+            ? `Si ves el cargo en tu tarjeta, escríbenos con tu número de orden${o ? ' #' + o.order_number : ''} y lo resolvemos.`
+            : 'No se realizó ningún cobro y tus números fueron liberados. Puedes intentarlo de nuevo.'}</p>
+          ${o ? `<a class="btn btn-gold" href="/rifa.html?r=${encodeURIComponent(o.slug)}">Intentar de nuevo</a>` : '<a class="btn btn-gold" href="/">Ver rifas</a>'}`;
+      }
+      header();
+    })();
+  </script>
+</body>
+</html>
