@@ -74,7 +74,6 @@ async function refreshStats() {
   const pct = Math.round((st.sold / R.total_tickets) * 100);
   $('#bar').style.width = pct + '%';
   $('#pct').textContent = `${pct}% vendido`;
-  $('#avail').textContent = `${R.total_tickets - st.sold - st.reserved} disponibles de ${R.total_tickets}`;
 }
 
 function setMode(m) {

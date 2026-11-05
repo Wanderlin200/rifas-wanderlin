@@ -239,10 +239,10 @@ begin
   select * into r from public.raffles where id = p_raffle_id for update;
   if r.status = 'drawn' then raise exception 'Esta rifa ya tiene ganador'; end if;
 
-  -- gen_random_bytes usa un generador criptográfico
+  -- gen_random_uuid() usa el generador aleatorio seguro de Postgres
   select t.* into w from public.tickets t
    where t.raffle_id = r.id and t.status = 'sold'
-   order by gen_random_bytes(8) limit 1;
+   order by gen_random_uuid() limit 1;
   if w.id is null then raise exception 'No hay boletos vendidos'; end if;
 
   select * into o from public.orders where id = w.order_id;

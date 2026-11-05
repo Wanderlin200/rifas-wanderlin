@@ -60,7 +60,7 @@
             <h3>${esc(r.title)}</h3>
             <div class="price">${money(r.ticket_price, r.currency)} <small>por boleto</small></div>
             <div class="progress"><div style="width:${pct}%"></div></div>
-            <div class="progress-label"><span>${pct}% vendido</span><span>${r.total_tickets - st.sold} disponibles</span></div>
+            <div class="progress-label"><span>${pct}% vendido</span></div>
           </div>
         </a>`;
     }
