@@ -91,3 +91,14 @@ Panel → rifa → **🎡 Elegir ganador** → **¡Girar la ruleta!**. El result
 - En República Dominicana las rifas con fines comerciales generalmente necesitan **autorización** (Ministerio de Hacienda / Lotería Nacional). Consúltalo antes de lanzar.
 - Algunos procesadores clasifican las rifas como "juegos de azar". Dile a AZUL desde el inicio que es para rifas para que aprueben tu tipo de comercio.
 - Publica las bases de cada rifa en la descripción (premio, fecha, cómo se entrega).
+
+## Pago por transferencia bancaria
+
+Al crear o editar una rifa eliges **Pago electrónico**, **Transferencia bancaria** o ambas, y escribes los datos de la cuenta.
+
+1. El cliente elige sus números y "Transferencia" → los números quedan apartados **2 horas** y ve los datos de la cuenta.
+2. Sube la captura de la transferencia → los números quedan apartados **72 horas** mientras verificas.
+3. En el panel aparece "N por verificar" → **Revisar comprobante** → **Aprobar pago** (números vendidos) o **Rechazar** (números liberados).
+
+Los comprobantes se guardan en un almacenamiento privado de Supabase (`comprobantes`) que solo ve el administrador.
+Si ya tenías la base de datos instalada, ejecuta una vez `supabase/actualizacion-transferencias.sql`.

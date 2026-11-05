@@ -90,9 +90,18 @@
               <input type="checkbox" required style="width:auto;margin-top:3px" />
               <span>Acepto las bases de la rifa y confirmo que soy mayor de 18 años.</span>
             </label>
+            <div id="methodBox" class="hidden">
+              <label>¿Cómo quieres pagar?</label>
+              <div class="pay-methods">
+                <label class="pay-opt" data-method="azul"><input type="radio" name="method" value="azul" />
+                  <span><b>Pago electrónico</b><small>Tarjeta, Apple Pay o Google Pay</small></span></label>
+                <label class="pay-opt" data-method="transfer"><input type="radio" name="method" value="transfer" />
+                  <span><b>Transferencia bancaria</b><small>Adjuntas la captura del pago</small></span></label>
+              </div>
+            </div>
             <div id="err" class="err hidden"></div>
             <button class="btn btn-gold btn-block" id="payBtn" style="margin-top:14px" disabled>Pagar</button>
-            <div class="secure">🔒 Pago seguro con tarjeta, Apple Pay o Google Pay a través de AZUL</div>
+            <div class="secure" id="secureNote">🔒 Pago seguro con tarjeta, Apple Pay o Google Pay a través de AZUL</div>
           </form>
         </div>
       </div>

@@ -3,52 +3,157 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>{SITE} · Resultado del pago</title>
+  <title>{SITE} · Tu orden</title>
   <link rel="icon" href="/assets/favicon.png" />
   <link rel="stylesheet" href="/assets/styles.css" />
 </head>
 <body>
   <header class="top"><div class="wrap"><a class="logo" href="/"><img src="/assets/logo-wanderlin.png" alt="Wanderlin iPhone" /></a></div></header>
   <main class="wrap">
-    <div class="card result" id="box"><p class="muted">Verificando tu pago…</p></div>
+    <div class="card result" id="box"><p class="muted">Verificando tu orden…</p></div>
   </main>
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
   <script src="/assets/config.js"></script>
   <script src="/assets/comun.js"></script>
   <script>
-    (async () => {
-      const p = new URLSearchParams(location.search);
-      const id = p.get('orden');
-      const box = $('#box');
+    const p = new URLSearchParams(location.search);
+    const id = p.get('orden');
+    const box = $('#box');
+    const chips = (o) => `<div class="chips">${(o.numbers || []).map((n) => `<span class="chip">${pad(n, o.total)}</span>`).join('')}</div>`;
+    const waLink = (msg) => `https://wa.me/${CFG.WHATSAPP}?text=${encodeURIComponent(msg)}`;
+
+    async function load() {
       let o = null;
       if (id) ({ data: o } = await sb.rpc('order_status', { p_order_id: id }));
+      if (!o) return failed(null);
 
-      if (o && o.status === 'paid') {
-        const total = o.numbers ? o.numbers.length : 0;
-        box.className = 'card result ok';
-        box.innerHTML = `
-          <div class="icon">✓</div>
-          <h1 style="font-size:26px">¡Pago aprobado!</h1>
-          <p class="muted">Orden #${o.order_number} · ${esc(o.title)} · ${money(o.amount, o.currency)}</p>
-          <div class="muted" style="font-size:13px">Tus números de la suerte</div>
-          <div class="chips">${(o.numbers || []).map((n) => `<span class="chip">${pad(n, o.total)}</span>`).join('')}</div>
-          <p class="muted" style="font-size:13px">Toma una captura de esta pantalla como comprobante.</p>
-          <a class="btn btn-gold" href="/rifa.html?r=${encodeURIComponent(o.slug)}">Volver a la rifa</a>
-          <a class="btn btn-ghost" data-wa target="_blank" style="margin-left:6px">Escríbenos</a>`;
-      } else {
-        const msg = { cancelado: 'Cancelaste el pago.', rechazado: 'El banco rechazó el pago.', error: 'No pudimos verificar el pago.' }[p.get('estado')] || 'El pago no se completó.';
-        box.className = 'card result bad';
-        box.innerHTML = `
-          <div class="icon">✕</div>
-          <h1 style="font-size:26px">${msg}</h1>
-          <p class="muted">${p.get('estado') === 'error'
-            ? `Si ves el cargo en tu tarjeta, escríbenos con tu número de orden${o ? ' #' + o.order_number : ''} y lo resolvemos.`
-            : 'No se realizó ningún cobro y tus números fueron liberados. Puedes intentarlo de nuevo.'}</p>
-          ${o ? `<a class="btn btn-gold" href="/rifa.html?r=${encodeURIComponent(o.slug)}">Intentar de nuevo</a>` : '<a class="btn btn-gold" href="/">Ver rifas</a>'}`;
+      if (o.status === 'paid') return paid(o);
+      if (o.method === 'transfer' && o.status === 'pending') return o.has_receipt ? inReview(o) : transferStep(o);
+      failed(o);
+    }
+
+    function paid(o) {
+      box.className = 'card result ok';
+      box.innerHTML = `
+        <div class="icon">✓</div>
+        <h1 style="font-size:26px">¡Pago confirmado!</h1>
+        <p class="muted">Orden #${o.order_number} · ${esc(o.title)} · ${money(o.amount, o.currency)}</p>
+        <div class="muted" style="font-size:13px">Tus números de la suerte</div>
+        ${chips(o)}
+        <p class="muted" style="font-size:13px">Toma una captura de esta pantalla como comprobante.</p>
+        <a class="btn btn-gold" href="/rifa.html?r=${encodeURIComponent(o.slug)}">Volver a la rifa</a>`;
+    }
+
+    // Paso de transferencia: datos bancarios + subir captura
+    function transferStep(o) {
+      const limit = o.reserved_until ? new Date(o.reserved_until) : null;
+      box.className = 'card result';
+      box.style.maxWidth = '560px';
+      box.innerHTML = `
+        <h1 style="font-size:24px">Tus números están apartados</h1>
+        <p class="muted" style="margin:0">Orden #${o.order_number} · ${esc(o.title)}</p>
+        ${chips(o)}
+        ${limit ? `<p style="font-size:14px;color:#ffd60a;margin:0">⏳ Tienes hasta las ${limit.toLocaleTimeString('es-DO', { hour: 'numeric', minute: '2-digit' })} para subir tu comprobante, o los números se liberan.</p>` : ''}
+        <div class="steps">
+          <h3><i>1</i> Transfiere exactamente ${money(o.amount, o.currency)}</h3>
+          <div class="bank-box">${esc(o.bank_info || 'Escríbenos por WhatsApp para recibir los datos de la cuenta.')}</div>
+          <p class="muted" style="font-size:13px;margin:8px 0 0">En la descripción de la transferencia escribe: <b style="color:var(--text)">Orden ${o.order_number}</b></p>
+          <h3><i>2</i> Sube la captura o foto de la transferencia</h3>
+          <label class="upload" id="drop">
+            <input type="file" id="file" accept="image/*" />
+            <div id="preview"><b style="color:var(--text)">Toca aquí para adjuntar la imagen</b><br><span style="font-size:13px">JPG o PNG · captura de pantalla o foto</span></div>
+          </label>
+          <div id="err" class="err hidden"></div>
+          <button class="btn btn-gold btn-block" id="send" style="margin-top:14px" disabled>Enviar comprobante</button>
+        </div>`;
+
+      let dataUrl = null;
+      $('#file').onchange = async (e) => {
+        const f = e.target.files[0];
+        if (!f) return;
+        $('#err').classList.add('hidden');
+        try {
+          dataUrl = await compress(f);
+          $('#preview').innerHTML = `<img src="${dataUrl}" alt="Comprobante" /><span style="font-size:13px">Toca para cambiar la imagen</span>`;
+          $('#send').disabled = false;
+        } catch {
+          showErr('No pudimos leer esa imagen. Prueba con otra captura.');
+        }
+      };
+      $('#send').onclick = async () => {
+        const b = $('#send');
+        b.disabled = true; b.textContent = 'Enviando…';
+        try {
+          const res = await fetch('/api/subir-comprobante', {
+            method: 'POST', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ order_id: id, image: dataUrl }),
+          });
+          const d = await res.json();
+          if (!res.ok) throw new Error(d.error || 'No se pudo enviar');
+          load();
+        } catch (err) {
+          showErr(err.message);
+          b.disabled = false; b.textContent = 'Enviar comprobante';
+        }
+      };
+    }
+
+    function inReview(o) {
+      box.className = 'card result pending';
+      box.innerHTML = `
+        <div class="icon">⏳</div>
+        <h1 style="font-size:26px">¡Recibimos tu comprobante!</h1>
+        <p class="muted">Orden #${o.order_number} · ${esc(o.title)} · ${money(o.amount, o.currency)}</p>
+        <div class="muted" style="font-size:13px">Tus números (apartados mientras verificamos)</div>
+        ${chips(o)}
+        <p class="muted" style="font-size:14px">Vamos a verificar la transferencia y confirmar tus números. Guarda este enlace para revisar el estado de tu orden.</p>
+        <a class="btn btn-gold" target="_blank" href="${waLink(`Hola, envié el comprobante de la orden #${o.order_number} (${o.title}).`)}">Avisar por WhatsApp</a>
+        <a class="btn btn-ghost" href="/rifa.html?r=${encodeURIComponent(o.slug)}" style="margin-left:6px">Volver a la rifa</a>`;
+    }
+
+    function failed(o) {
+      const estado = p.get('estado');
+      let msg = { cancelado: 'Cancelaste el pago.', rechazado: 'El pago no fue aprobado.', error: 'No pudimos verificar el pago.' }[estado] || 'El pago no se completó.';
+      let detail = 'No se realizó ningún cobro y tus números fueron liberados. Puedes intentarlo de nuevo.';
+      if (o && o.method === 'transfer') {
+        msg = o.status === 'expired' ? 'La reserva venció' : 'No pudimos verificar tu transferencia';
+        detail = o.status === 'expired'
+          ? 'No recibimos el comprobante a tiempo y los números se liberaron. Si ya transferiste, escríbenos por WhatsApp.'
+          : 'Si ya transferiste, escríbenos por WhatsApp con tu número de orden y lo revisamos.';
+      } else if (estado === 'error') {
+        detail = `Si ves el cargo en tu tarjeta, escríbenos con tu número de orden${o ? ' #' + o.order_number : ''} y lo resolvemos.`;
       }
-      header();
-    })();
+      box.className = 'card result bad';
+      box.innerHTML = `
+        <div class="icon">✕</div>
+        <h1 style="font-size:26px">${msg}</h1>
+        <p class="muted">${detail}</p>
+        ${o ? `<a class="btn btn-gold" href="/rifa.html?r=${encodeURIComponent(o.slug)}">Volver a la rifa</a>
+               <a class="btn btn-ghost" target="_blank" style="margin-left:6px" href="${waLink(`Hola, tengo una consulta sobre la orden #${o.order_number}.`)}">WhatsApp</a>`
+            : '<a class="btn btn-gold" href="/">Ver rifas</a>'}`;
+    }
+
+    function showErr(m) { $('#err').textContent = m; $('#err').classList.remove('hidden'); }
+
+    // Reduce la imagen a máx. 1600 px en JPEG para que suba rápido
+    function compress(file) {
+      return new Promise((resolve, reject) => {
+        const img = new Image();
+        img.onload = () => {
+          const max = 1600, k = Math.min(1, max / Math.max(img.width, img.height));
+          const c = document.createElement('canvas');
+          c.width = Math.round(img.width * k); c.height = Math.round(img.height * k);
+          c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
+          URL.revokeObjectURL(img.src);
+          resolve(c.toDataURL('image/jpeg', 0.82));
+        };
+        img.onerror = reject;
+        img.src = URL.createObjectURL(file);
+      });
+    }
+
+    load();
   </script>
 </body>
 </html>

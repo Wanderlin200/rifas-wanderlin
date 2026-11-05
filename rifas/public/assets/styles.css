@@ -189,3 +189,27 @@ footer { border-top: 1px solid var(--line); padding: 26px 0; color: var(--muted)
   .row { grid-template-columns: 1fr; }
   .numbers { grid-template-columns: repeat(auto-fill, minmax(46px, 1fr)); }
 }
+
+/* ---------- Métodos de pago ---------- */
+.pay-methods { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.pay-opt {
+  display: flex; gap: 10px; align-items: flex-start; margin: 0; cursor: pointer;
+  border: 1px solid var(--line); background: var(--bg-2); border-radius: 12px; padding: 12px; color: var(--text);
+}
+.pay-opt input { width: auto; margin-top: 3px; accent-color: #fff; }
+.pay-opt b { display: block; font-size: 14px; }
+.pay-opt small { color: var(--muted); font-size: 12px; }
+.pay-opt.on { border-color: #fff; background: #1c1c1e; }
+.bank-box { background: var(--bg-2); border: 1px solid var(--line); border-radius: 12px; padding: 14px 16px; white-space: pre-line; text-align: left; font-size: 15px; line-height: 1.7; }
+.upload {
+  display: block; border: 1.5px dashed var(--line); border-radius: 12px; padding: 18px; text-align: center; cursor: pointer;
+  color: var(--muted); margin-top: 8px;
+}
+.upload:hover { border-color: #fff; color: var(--text); }
+.upload img { max-height: 220px; margin: 0 auto 8px; border-radius: 8px; }
+.upload input { display: none; }
+.steps { text-align: left; margin: 18px 0 6px; }
+.steps h3 { font-size: 15px; margin: 18px 0 8px; display: flex; gap: 8px; align-items: center; }
+.steps h3 i { font-style: normal; width: 24px; height: 24px; border-radius: 50%; background: #fff; color: #000; display: grid; place-items: center; font-size: 13px; }
+.pending .icon { background: rgba(255,214,10,.14); color: #ffd60a; }
+@media (max-width: 520px) { .pay-methods { grid-template-columns: 1fr; } }

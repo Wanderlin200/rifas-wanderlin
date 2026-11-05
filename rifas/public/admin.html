@@ -111,6 +111,15 @@
           <div><label>Modalidad</label><select id="eMode"><option value="both">Elegir números y al azar</option><option value="pick">Solo elegir números</option><option value="random">Solo al azar</option></select></div>
           <div><label>Fecha del sorteo</label><input id="eDate" type="datetime-local" /></div>
         </div>
+        <label>Formas de pago</label>
+        <div class="pay-methods">
+          <label class="pay-opt"><input type="checkbox" id="ePayOnline" checked /><span><b>Pago electrónico</b><small>Tarjeta, Apple Pay, Google Pay (AZUL)</small></span></label>
+          <label class="pay-opt"><input type="checkbox" id="ePayTransfer" /><span><b>Transferencia bancaria</b><small>El cliente sube la captura</small></span></label>
+        </div>
+        <div id="bankWrap" class="hidden">
+          <label>Datos de la cuenta (el cliente los verá al pagar)</label>
+          <textarea id="eBank" rows="5" placeholder="Banco Popular&#10;Cuenta de ahorro: 000-000000-0&#10;A nombre de: Wanderlin ...&#10;Cédula/RNC: 000-0000000-0"></textarea>
+        </div>
         <label>Estado</label>
         <select id="eStatus"><option value="draft">Borrador (oculta)</option><option value="active">Activa (a la venta)</option><option value="closed">Venta cerrada</option></select>
         <div id="eErr" class="err hidden"></div>
@@ -135,6 +144,21 @@
         <div id="mErr" class="err hidden"></div>
         <div class="row" style="margin-top:16px"><button type="button" class="btn btn-ghost" data-close>Cancelar</button><button class="btn btn-gold">Registrar venta</button></div>
       </form>
+    </div>
+  </div>
+
+  <!-- MODAL COMPROBANTE -->
+  <div class="modal hidden" id="receiptModal">
+    <div class="card">
+      <h2 id="rcTitle">Comprobante</h2>
+      <p class="muted" id="rcInfo" style="margin-top:0"></p>
+      <a id="rcLink" target="_blank"><img id="rcImg" alt="Comprobante de transferencia" style="width:100%;max-height:55vh;object-fit:contain;border-radius:12px;border:1px solid var(--line);background:#111" /></a>
+      <p class="muted" style="font-size:12px;text-align:center">Toca la imagen para verla en grande. Confirma en tu banco que el dinero llegó antes de aprobar.</p>
+      <div class="row" id="rcBtns" style="margin-top:12px">
+        <button class="btn btn-red" id="rcReject">Rechazar</button>
+        <button class="btn btn-green" id="rcApprove">Aprobar pago</button>
+      </div>
+      <button class="btn btn-ghost btn-block" data-close style="margin-top:10px">Cerrar</button>
     </div>
   </div>
 

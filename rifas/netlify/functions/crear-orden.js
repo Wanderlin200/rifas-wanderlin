@@ -19,15 +19,20 @@ exports.handler = async (event) => {
   if (phone.replace(/\D/g, '').length < 10) return json(400, { error: 'Escribe un teléfono válido' });
   if (!body.raffle_id) return json(400, { error: 'Rifa no indicada' });
 
+  const method = body.method === 'transfer' ? 'transfer' : 'azul';
+
   let order;
   try {
     order = await rpc('reserve_tickets', {
       p_raffle_id: body.raffle_id, p_numbers: numbers.length ? numbers : null, p_quantity: quantity,
-      p_name: name, p_phone: phone, p_email: email, p_method: 'azul',
+      p_name: name, p_phone: phone, p_email: email, p_method: method,
     });
   } catch (e) {
     return json(409, { error: e.message });
   }
+
+  // ---------- Transferencia: el cliente verá los datos bancarios y subirá su comprobante ----------
+  if (method === 'transfer') return json(200, { transfer: true, order });
 
   // ---------- Modo demo: sin cuenta de Azul todavía ----------
   if (env('DEMO_MODE', 'true') === 'true' || !env('AZUL_MERCHANT_ID')) {

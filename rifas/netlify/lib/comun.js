@@ -58,4 +58,4 @@ const json = (status, body) => ({
   body: JSON.stringify(body),
 });
 
-module.exports = { env, rpc, findOrderByNumber, azulAmount, azulHash, safeEqual, json };
+module.exports = { env, rpc, sbHeaders, findOrderByNumber, azulAmount, azulHash, safeEqual, json };

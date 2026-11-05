@@ -6,6 +6,7 @@ let selected = new Set();
 let blockStart = 0;
 let blockData = [];
 let pendingOrder = null;
+let payMethod = 'azul';  // azul | transfer
 
 const slug = new URLSearchParams(location.search).get('r');
 
@@ -59,6 +60,15 @@ async function init() {
   $('#minus').onclick = () => { $('#qty').value = Math.max(1, +$('#qty').value - 1); updateSummary(); };
   $('#plus').onclick = () => { $('#qty').value = Math.min(max, +$('#qty').value + 1); updateSummary(); };
   $('#qty').oninput = updateSummary;
+
+  // Métodos de pago habilitados en esta rifa
+  const online = R.pay_online !== false, transfer = !!R.pay_transfer;
+  payMethod = online ? 'azul' : 'transfer';
+  if (online && transfer) {
+    $('#methodBox').classList.remove('hidden');
+    $$('.pay-opt input').forEach((i) => (i.onchange = () => setPayMethod(i.value)));
+  }
+  setPayMethod(payMethod);
 
   $('#form').onsubmit = pay;
   $('#demoOk').onclick = () => demoPay(true);
@@ -137,12 +147,26 @@ function lucky() {
 
 function count() { return mode === 'pick' ? selected.size : Math.max(0, Math.min(R.max_per_order, parseInt($('#qty').value, 10) || 0)); }
 
+function setPayMethod(m) {
+  payMethod = m;
+  $$('.pay-opt').forEach((o) => {
+    o.classList.toggle('on', o.dataset.method === m);
+    o.querySelector('input').checked = o.dataset.method === m;
+  });
+  $('#secureNote').textContent = m === 'transfer'
+    ? '🏦 Al reservar verás los datos de la cuenta. Tus números quedan apartados 2 horas para que transfieras y subas la captura.'
+    : '🔒 Pago seguro con tarjeta, Apple Pay o Google Pay a través de AZUL';
+  updateSummary();
+}
+
 function updateSummary() {
   const c = count();
   $('#countLabel').textContent = `${c} boleto${c === 1 ? '' : 's'}`;
   $('#total').textContent = money(c * R.ticket_price, R.currency);
   $('#payBtn').disabled = c < 1;
-  $('#payBtn').textContent = c ? `Pagar ${money(c * R.ticket_price, R.currency)}` : 'Elige al menos un boleto';
+  $('#payBtn').textContent = !c ? 'Elige al menos un boleto'
+    : payMethod === 'transfer' ? `Reservar y pagar por transferencia (${money(c * R.ticket_price, R.currency)})`
+    : `Pagar ${money(c * R.ticket_price, R.currency)}`;
   const nums = [...selected].sort((a, b) => a - b);
   $('#chips').innerHTML = nums.length
     ? nums.map((n) => `<span class="chip">${pad(n, R.total_tickets)}</span>`).join('')
@@ -164,10 +188,16 @@ async function pay(e) {
         numbers: mode === 'pick' ? [...selected] : [],
         quantity: count(),
         name: $('#name').value, phone: $('#phone').value, email: $('#email').value,
+        method: payMethod,
       }),
     });
     const data = await res.json();
     if (!res.ok) throw new Error(data.error || 'No se pudo crear la orden');
+
+    if (data.transfer) {
+      location.href = `/resultado.html?orden=${data.order.order_id}&estado=transferencia`;
+      return;
+    }
 
     if (data.demo) {
       pendingOrder = data.order;

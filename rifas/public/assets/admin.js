@@ -11,6 +11,7 @@ $$('[data-close]').forEach((b) => (b.onclick = closeModals));
 
 const slugify = (s) => s.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 50);
 const STATUS = { draft: 'Borrador', active: 'Activa', closed: 'Cerrada', drawn: 'Sorteada', paid: 'Pagada', pending: 'Pendiente', declined: 'Rechazada', cancelled: 'Cancelada', expired: 'Vencida' };
+const METHOD = { azul: 'AZUL', transfer: 'Transferencia', manual: 'Manual' };
 const badge = (s) => `<span class="badge b-${s}">${STATUS[s] || s}</span>`;
 
 // Descarga todas las filas paginando de 1000 en 1000 (límite de Supabase)
@@ -60,14 +61,17 @@ async function loadList() {
   if (!raffles.length) { $('#list').innerHTML = '<div class="empty" style="border:0">Aún no tienes rifas. Crea la primera con “Nueva rifa”.</div>'; return; }
   const rows = await Promise.all(raffles.map(async (r) => {
     const st = await ticketStats(r.id);
+    const { count: toVerify } = await sb.from('orders').select('id', { count: 'exact', head: true })
+      .eq('raffle_id', r.id).eq('status', 'pending').not('receipt_path', 'is', null);
     return `<div class="item">
       <div class="thumb" style="background-image:url('${esc(r.image_url || '')}')"></div>
-      <div><div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap"><b>${esc(r.title)}</b>${badge(r.status)}</div>
+      <div><div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap"><b>${esc(r.title)}</b>${badge(r.status)}${toVerify ? `<span class="badge b-pending">${toVerify} por verificar</span>` : ''}</div>
         <div class="muted" style="font-size:13px">${st.sold}/${r.total_tickets} vendidos · ${money(r.ticket_price, r.currency)} c/u · ${money(st.sold * r.ticket_price, r.currency)} recaudado</div></div>
-      <div class="actions"><button class="btn btn-ghost btn-sm" data-edit="${r.id}">Editar</button><button class="btn btn-gold btn-sm" data-open="${r.id}">Ventas y sorteo</button></div>
+      <div class="actions"><button class="btn btn-ghost btn-sm" data-edit="${r.id}">Editar</button><button class="btn btn-gold btn-sm" data-open="${r.id}">Ventas y sorteo</button><button class="btn btn-ghost btn-sm" data-del="${r.id}" title="Eliminar rifa" style="color:var(--red)">Eliminar</button></div>
     </div>`;
   }));
   $('#list').innerHTML = rows.join('');
+  $$('[data-del]').forEach((b) => (b.onclick = () => deleteRaffle(raffles.find((r) => r.id === b.dataset.del))));
   $$('[data-edit]').forEach((b) => (b.onclick = () => openEdit(raffles.find((r) => r.id === b.dataset.edit))));
   $$('[data-open]').forEach((b) => (b.onclick = () => openRaffle(b.dataset.open)));
 }
@@ -94,11 +98,28 @@ function openEdit(r) {
   $('#eDate').value = r?.draw_date ? new Date(new Date(r.draw_date).getTime() - new Date().getTimezoneOffset() * 60000).toISOString().slice(0, 16) : '';
   $('#eStatus').value = r?.status === 'drawn' ? 'closed' : r?.status || 'draft';
   $('#eStatus').disabled = r?.status === 'drawn';
+  $('#ePayOnline').checked = r ? r.pay_online !== false : true;
+  $('#ePayTransfer').checked = !!r?.pay_transfer;
+  $('#eBank').value = r?.bank_info || '';
+  syncPayOpts();
   openModal('editModal');
 }
 
+function syncPayOpts() {
+  $$('#editModal .pay-opt').forEach((o) => o.classList.toggle('on', o.querySelector('input').checked));
+  $('#bankWrap').classList.toggle('hidden', !$('#ePayTransfer').checked);
+}
+$('#ePayOnline').onchange = syncPayOpts;
+$('#ePayTransfer').onchange = syncPayOpts;
+
 $('#editForm').onsubmit = async (e) => {
   e.preventDefault();
+  if (!$('#ePayOnline').checked && !$('#ePayTransfer').checked) {
+    $('#eErr').textContent = 'Elige al menos una forma de pago.'; $('#eErr').classList.remove('hidden'); return;
+  }
+  if ($('#ePayTransfer').checked && $('#eBank').value.trim().length < 10) {
+    $('#eErr').textContent = 'Escribe los datos de la cuenta bancaria para las transferencias.'; $('#eErr').classList.remove('hidden'); return;
+  }
   const btn = $('#eSave'); btn.disabled = true; btn.textContent = 'Guardando…';
   try {
     let image_url = editing?.image_url || null;
@@ -113,6 +134,8 @@ $('#editForm').onsubmit = async (e) => {
       title: $('#eTitle').value.trim(), prize: $('#ePrize').value.trim(), slug: slugify($('#eSlug').value),
       description: $('#eDesc').value, image_url, ticket_price: +$('#ePrice').value, currency: $('#eCur').value,
       max_per_order: +$('#eMax').value, mode: $('#eMode').value,
+      pay_online: $('#ePayOnline').checked, pay_transfer: $('#ePayTransfer').checked,
+      bank_info: $('#eBank').value.trim() || null,
       draw_date: $('#eDate').value ? new Date($('#eDate').value).toISOString() : null,
     };
     if (editing?.status !== 'drawn') row.status = $('#eStatus').value;
@@ -129,6 +152,35 @@ $('#editForm').onsubmit = async (e) => {
     $('#eErr').classList.remove('hidden');
   } finally { btn.disabled = false; btn.textContent = 'Guardar'; }
 };
+
+// ---------------- ELIMINAR ----------------
+// Borra la rifa con sus boletos, ventas y ganador (no se puede deshacer)
+async function deleteRaffle(r, paidCount) {
+  if (paidCount == null) {
+    const { count } = await sb.from('orders').select('id', { count: 'exact', head: true }).eq('raffle_id', r.id).eq('status', 'paid');
+    paidCount = count || 0;
+  }
+  const aviso = paidCount
+    ? `Esta rifa tiene ${paidCount} venta(s) pagada(s)${r.status === 'drawn' ? ' y un ganador registrado' : ''}.\nSe borrarán también todas las ventas y los datos de los compradores.\n\nTe recomiendo exportar el CSV antes.\n\n`
+    : '';
+  const ok = prompt(`${aviso}Para eliminar "${r.title}" de forma definitiva escribe: ELIMINAR`);
+  if (ok === null) return;
+  if (ok.trim().toUpperCase() !== 'ELIMINAR') return toast('No se eliminó: no escribiste ELIMINAR');
+
+  // Rutas de los comprobantes para borrarlos también
+  const { data: rc } = await sb.from('orders').select('receipt_path').eq('raffle_id', r.id).not('receipt_path', 'is', null);
+  const { error } = await sb.from('raffles').delete().eq('id', r.id);
+  if (error) return toast(error.message, 4000);
+
+  // Borrar también la imagen guardada en Supabase Storage
+  const m = (r.image_url || '').match(/\/storage\/v1\/object\/public\/rifas\/(.+)$/);
+  if (m) await sb.storage.from('rifas').remove([decodeURIComponent(m[1])]);
+  if (rc?.length) await sb.storage.from('comprobantes').remove(rc.map((x) => x.receipt_path));
+
+  toast('Rifa eliminada');
+  current = null;
+  loadList();
+}
 
 // ---------------- DETALLE / VENTAS ----------------
 $('#back').onclick = (e) => { e.preventDefault(); current = null; loadList(); };
@@ -150,12 +202,13 @@ async function openRaffle(id) {
   const paid = orders.filter((o) => o.status === 'paid');
   const sold = paid.reduce((s, o) => s + o.numbers.length, 0);
   const revenue = paid.reduce((s, o) => s + Number(o.amount), 0);
-  const pending = orders.filter((o) => o.status === 'pending').length;
+  const pending = orders.filter((o) => o.status === 'pending' && o.receipt_path).length;
+  if (pending) $('#fStatus').value = 'pending';
   $('#rStats').innerHTML = [
     [`${sold}/${r.total_tickets}`, 'Boletos vendidos'],
     [money(revenue, r.currency), 'Recaudado'],
     [paid.length, 'Compradores'],
-    [pending, 'Pagos pendientes'],
+    [pending, 'Transferencias por verificar'],
   ].map(([v, l]) => `<div class="card stat"><b>${v}</b><span>${l}</span></div>`).join('');
 
   // Acciones
@@ -166,7 +219,9 @@ async function openRaffle(id) {
   if (r.status !== 'drawn') a.push(`<button class="btn btn-ghost btn-sm" id="aManual">+ Venta manual</button>`);
   if (r.status !== 'drawn') a.push(`<button class="btn btn-gold btn-sm" id="aDraw" ${sold ? '' : 'disabled title="No hay boletos vendidos"'}>🎡 Elegir ganador</button>`);
   else a.push(`<button class="btn btn-gold btn-sm" id="aWinner">🏆 Ver ganador</button>`);
+  a.push(`<button class="btn btn-ghost btn-sm" id="aDelete" style="color:var(--red)">Eliminar</button>`);
   $('#rActions').innerHTML = a.join('');
+  $('#aDelete').onclick = () => deleteRaffle(r, paid.length);
   $('#aEdit').onclick = () => openEdit(r);
   $$('[data-st]').forEach((b) => (b.onclick = async () => { await sb.from('raffles').update({ status: b.dataset.st }).eq('id', r.id); openRaffle(r.id); }));
   $('#aManual') && ($('#aManual').onclick = () => { $('#manualForm').reset(); $('#mErr').classList.add('hidden'); openModal('manualModal'); });
@@ -194,11 +249,13 @@ function renderOrders() {
       <td class="muted">${o.order_number}</td>
       <td><b>${esc(o.buyer_name)}</b><br><a class="muted" href="https://wa.me/${o.buyer_phone.replace(/\D/g, '').replace(/^(8[024]9)/, '1$1')}" target="_blank">${esc(o.buyer_phone)}</a>${o.buyer_email ? `<br><span class="muted" style="font-size:12px">${esc(o.buyer_email)}</span>` : ''}</td>
       <td class="nums-cell">${o.numbers.map((n) => pad(n, T)).join(', ') || '—'}</td>
-      <td>${money(o.amount, current.currency)}<br><span class="muted" style="font-size:12px">${o.payment_method === 'manual' ? 'Manual' : 'AZUL'}${o.auth_code && o.auth_code !== 'MANUAL' ? ' · ' + esc(o.auth_code) : ''}</span></td>
+      <td>${money(o.amount, current.currency)}<br><span class="muted" style="font-size:12px">${METHOD[o.payment_method] || o.payment_method}${o.auth_code && o.auth_code !== 'MANUAL' ? ' · ' + esc(o.auth_code) : ''}</span></td>
       <td>${badge(o.status)}${o.response_msg?.startsWith('REVISAR') ? `<br><span style="color:var(--red);font-size:12px">${esc(o.response_msg)}</span>` : ''}</td>
       <td class="muted" style="font-size:13px">${new Date(o.created_at).toLocaleString('es-DO', { dateStyle: 'short', timeStyle: 'short' })}</td>
-      <td>${o.status === 'pending' && current.status !== 'drawn' ? `<button class="btn btn-ghost btn-sm" data-paid="${o.id}">Marcar pagada</button>` : ''}</td>
+      <td><div class="actions">${o.receipt_path ? `<button class="btn ${o.status === 'pending' ? 'btn-gold' : 'btn-ghost'} btn-sm" data-receipt="${o.id}">${o.status === 'pending' ? 'Revisar comprobante' : 'Ver comprobante'}</button>` : ''}
+        ${o.status === 'pending' && !o.receipt_path && current.status !== 'drawn' ? `<button class="btn btn-ghost btn-sm" data-paid="${o.id}">Marcar pagada</button>` : ''}</div></td>
     </tr>`).join('') : '<tr><td colspan="7" class="muted" style="text-align:center;padding:30px">Sin ventas con este filtro.</td></tr>';
+  $$('[data-receipt]').forEach((b) => (b.onclick = () => openReceipt(orders.find((o) => o.id === b.dataset.receipt))));
   $$('[data-paid]').forEach((b) => (b.onclick = async () => {
     if (!confirm('¿Confirmas que recibiste este pago (transferencia/efectivo)?')) return;
     const { error } = await sb.rpc('admin_mark_paid', { p_order_id: b.dataset.paid });
@@ -206,11 +263,39 @@ function renderOrders() {
   }));
 }
 
+// ---------------- COMPROBANTES DE TRANSFERENCIA ----------------
+let reviewing = null;
+async function openReceipt(o) {
+  reviewing = o;
+  const T = current.total_tickets;
+  $('#rcTitle').textContent = `Orden #${o.order_number}`;
+  $('#rcInfo').innerHTML = `${esc(o.buyer_name)} · ${esc(o.buyer_phone)}<br>Monto esperado: <b style="color:var(--text)">${money(o.amount, current.currency)}</b> · Números: ${o.numbers.map((n) => pad(n, T)).join(', ') || '—'}`;
+  $('#rcImg').removeAttribute('src');
+  $('#rcBtns').classList.toggle('hidden', o.status !== 'pending');
+  openModal('receiptModal');
+  const { data, error } = await sb.storage.from('comprobantes').createSignedUrl(o.receipt_path, 600);
+  if (error) return toast('No se pudo abrir el comprobante: ' + error.message, 4000);
+  $('#rcImg').src = data.signedUrl;
+  $('#rcLink').href = data.signedUrl;
+}
+$('#rcApprove').onclick = async () => {
+  if (!confirm(`¿Confirmas que recibiste ${money(reviewing.amount, current.currency)} en tu cuenta?`)) return;
+  const { error } = await sb.rpc('admin_mark_paid', { p_order_id: reviewing.id });
+  if (error) return toast(error.message, 4000);
+  closeModals(); toast('Pago aprobado: los números quedaron vendidos'); openRaffle(current.id);
+};
+$('#rcReject').onclick = async () => {
+  if (!confirm('¿Rechazar este comprobante? Los números se liberarán para otros compradores.')) return;
+  const { error } = await sb.rpc('admin_reject_order', { p_order_id: reviewing.id });
+  if (error) return toast(error.message, 4000);
+  closeModals(); toast('Comprobante rechazado'); openRaffle(current.id);
+};
+
 $('#csvBtn').onclick = () => {
   const T = current.total_tickets;
   const rows = [['Orden', 'Nombre', 'Telefono', 'Correo', 'Numeros', 'Monto', 'Estado', 'Metodo', 'Autorizacion', 'Fecha']]
     .concat(filteredOrders().map((o) => [o.order_number, o.buyer_name, o.buyer_phone, o.buyer_email || '', o.numbers.map((n) => pad(n, T)).join(' '),
-      o.amount, STATUS[o.status], o.payment_method, o.auth_code || '', new Date(o.created_at).toLocaleString('es-DO')]));
+      o.amount, STATUS[o.status], METHOD[o.payment_method] || o.payment_method, o.auth_code || '', new Date(o.created_at).toLocaleString('es-DO')]));
   const csv = '﻿' + rows.map((r) => r.map((v) => `"${String(v).replace(/"/g, '""')}"`).join(',')).join('\n');
   const a = document.createElement('a');
   a.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8' }));
