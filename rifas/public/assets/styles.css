@@ -224,3 +224,43 @@ footer { border-top: 1px solid var(--line); padding: 26px 0; color: var(--muted)
 .steps h3 i { font-style: normal; width: 24px; height: 24px; border-radius: 50%; background: #fff; color: #000; display: grid; place-items: center; font-size: 13px; }
 .pending .icon { background: rgba(255,214,10,.14); color: #ffd60a; }
 @media (max-width: 520px) { .pay-methods { grid-template-columns: 1fr; } }
+
+/* ---------- v3: secciones, bancos, premiados, paquetes ---------- */
+.form-section { border: 1px solid var(--line); border-radius: 14px; padding: 14px 16px; margin-top: 16px; background: rgba(255,255,255,.02); }
+.bank-logo { flex: none; width: 40px; height: 40px; border-radius: 12px; display: grid; place-items: center; font: 800 13px Inter, sans-serif; color: #fff; letter-spacing: .02em; }
+.bank-item { display: flex; gap: 12px; align-items: center; padding: 12px 0; }
+.bank-item + .bank-item { border-top: 1px solid var(--line); }
+.bank-item .info { flex: 1; min-width: 0; font-size: 14px; }
+.bank-item .info small { display: block; color: var(--muted); }
+.bank-pick { display: grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap: 10px; }
+.bank-card { border: 1px solid var(--line); background: var(--bg-2); border-radius: 14px; padding: 14px 10px; text-align: center; cursor: pointer; color: var(--text); font: 600 12px Inter, sans-serif; display: flex; flex-direction: column; align-items: center; gap: 8px; }
+.bank-card small { color: var(--muted); font-weight: 500; }
+.bank-card.on { border-color: #fff; background: #1c1c1e; box-shadow: 0 0 0 1px #fff inset; }
+
+.bonus { border: 1px solid #3a3a3c; border-radius: 18px; padding: 18px 16px; margin-top: 16px; background: linear-gradient(180deg, rgba(255,255,255,.05), transparent); text-align: center; }
+.bonus .crown { font-size: 30px; line-height: 1; }
+.bonus h4 { margin: 8px 0 2px; font: 600 13px Inter, sans-serif; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
+.bonus .amount { font: 800 26px -apple-system, BlinkMacSystemFont, Inter, sans-serif; }
+.bonus-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(78px, 1fr)); gap: 8px; margin: 14px 0 10px; }
+.bonus-num { border: 1px solid var(--line); background: #0c0c0e; border-radius: 12px; padding: 10px 4px; font: 800 17px Inter, sans-serif; }
+.bonus-num.out { background: #fff; color: #000; border-color: #fff; }
+.bonus-num.out s { display: block; font-size: 15px; opacity: .55; }
+.bonus-num.out small { display: block; font-size: 10px; font-weight: 800; letter-spacing: .04em; margin-top: 2px; }
+.bonus-num small.who { font-weight: 600; letter-spacing: 0; text-transform: none; }
+
+.pkgs { display: grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap: 10px; margin-bottom: 12px; }
+.pkg { position: relative; border: 1px solid var(--line); background: var(--bg-2); color: var(--text); border-radius: 16px; padding: 18px 8px 12px; cursor: pointer; text-align: center; font-family: Inter, sans-serif; }
+.pkg b { display: block; font: 800 34px/1 -apple-system, BlinkMacSystemFont, Inter, sans-serif; }
+.pkg span { display: block; font-size: 10px; letter-spacing: .18em; color: var(--muted); margin: 4px 0 8px; }
+.pkg em { font-style: normal; font-weight: 700; font-size: 13px; }
+.pkg i { position: absolute; top: -9px; left: 50%; transform: translateX(-50%); background: #fff; color: #000; font: 800 9px Inter, sans-serif; letter-spacing: .08em; padding: 3px 8px; border-radius: 99px; font-style: normal; white-space: nowrap; }
+.pkg.on { border-color: #fff; box-shadow: 0 0 0 1px #fff inset; background: #1c1c1e; }
+.pkg[disabled] { opacity: .35; cursor: not-allowed; }
+.min-note { font-size: 12px; color: var(--muted); margin-top: 6px; }
+
+.lookup-card { padding: 16px; }
+.lookup-card + .lookup-card { margin-top: 12px; }
+.lookup-card .chip.win { background: #fff; color: #000; border-color: #fff; }
+.badge { font-size: 11px; font-weight: 700; padding: 3px 8px; border-radius: 99px; text-transform: uppercase; letter-spacing: .04em; white-space: nowrap; }
+.b-paid { background: rgba(48,209,88,.15); color: var(--green); }
+.b-pending { background: rgba(255,214,10,.14); color: #ffd60a; }

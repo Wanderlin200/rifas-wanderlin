@@ -11,7 +11,7 @@
   <header class="top">
     <div class="wrap">
       <a class="logo" href="/"><img src="/assets/logo-wanderlin.png" alt="Wanderlin iPhone" /></a>
-      <nav class="nav"><a href="/">← Todas las rifas</a></nav>
+      <nav class="nav"><a href="/">← Rifas</a><a href="/verificador.html">Verificador</a></nav>
     </div>
   </header>
 
@@ -31,7 +31,8 @@
             <div class="countdown" id="countdown"></div>
           </div>
           <div class="progress" style="margin-top:14px"><div id="bar"></div></div>
-          <div class="progress-label" style="margin-top:6px"><span id="pct"></span></div>
+          <div class="progress-label" style="margin-top:6px"><span id="pct"></span><span id="minLabel"></span></div>
+          <div id="bonusBox" class="bonus hidden"></div>
           <p id="desc" style="white-space:pre-line;margin-top:16px"></p>
         </div>
       </div>
@@ -60,13 +61,15 @@
 
           <!-- Aleatorio -->
           <div id="randomPane" class="hidden">
-            <label>¿Cuántos boletos quieres?</label>
+            <label>Elige tu paquete</label>
+            <div class="pkgs" id="pkgs"></div>
+            <label>O escribe una cantidad personalizada</label>
             <div class="qty">
-              <button id="minus">−</button>
+              <button type="button" id="minus">−</button>
               <input id="qty" type="number" min="1" value="1" />
-              <button id="plus">+</button>
+              <button type="button" id="plus">+</button>
             </div>
-            <div class="quick" id="quick"></div>
+            <div class="min-note" id="minNote"></div>
             <p class="muted" style="font-size:13px">El sistema te asignará números disponibles al azar al momento de pagar.</p>
           </div>
 
@@ -83,7 +86,7 @@
             <label for="name">Nombre completo</label>
             <input id="name" name="name" required minlength="3" placeholder="Ej. María Pérez" />
             <div class="row">
-              <div><label for="phone">Teléfono / WhatsApp</label><input id="phone" name="phone" type="tel" required placeholder="809-000-0000" /></div>
+              <div><label for="phone">Teléfono / WhatsApp</label><input id="phone" name="phone" type="tel" required placeholder="809-000-0000" /><div class="min-note">Con este número verás tus boletos en el Verificador.</div></div>
               <div><label for="email">Correo (opcional)</label><input id="email" name="email" type="email" placeholder="tu@correo.com" /></div>
             </div>
             <label style="display:flex;gap:8px;align-items:flex-start;color:var(--muted)">

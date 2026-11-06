@@ -62,7 +62,7 @@
 
     <!-- LISTA DE RIFAS -->
     <div id="listView" class="hidden">
-      <div class="section-title"><h2>Mis rifas</h2><button class="btn btn-gold" id="newBtn">+ Nueva rifa</button></div>
+      <div class="section-title" style="flex-wrap:wrap;gap:10px"><h2>Mis rifas</h2><div class="actions"><button class="btn btn-ghost" id="banksBtn">🏦 Cuentas bancarias</button><button class="btn btn-gold" id="newBtn">+ Nueva rifa</button></div></div>
       <div class="card admin-list" id="list"></div>
     </div>
 
@@ -73,6 +73,7 @@
         <div class="actions" id="rActions"></div>
       </div>
       <div class="stats" id="rStats"></div>
+      <div class="card panel hidden" id="rBonus" style="margin-bottom:16px"></div>
       <div class="card panel">
         <div class="section-title" style="margin:0 0 10px;flex-wrap:wrap;gap:10px">
           <h3 style="margin:0">Ventas</h3>
@@ -105,7 +106,21 @@
         </div>
         <div class="row">
           <div><label>Cantidad de boletos</label><input id="eTotal" type="number" min="2" max="100000" value="100" required /></div>
-          <div><label>Máximo por compra</label><input id="eMax" type="number" min="1" value="50" required /></div>
+          <div><label>Máximo por compra</label><input id="eMax" type="number" min="1" value="100" required /></div>
+        </div>
+        <div class="row">
+          <div><label>Compra mínima</label><input id="eMin" type="number" min="1" value="1" required /></div>
+          <div><label>Paquetes (cantidades separadas por coma)</label><input id="ePkgs" placeholder="2, 5, 10, 25, 50, 100" /></div>
+        </div>
+
+        <div class="form-section">
+          <b>👑 Números premiados</b> <span class="muted" style="font-size:13px">· opcional: si al cliente le sale uno, gana un premio extra</span>
+          <div class="row">
+            <div><label>Premio por cada número</label><input id="eBonusPrize" placeholder="RD$5,000" /></div>
+            <div><label>¿Cuántos números?</label><div style="display:flex;gap:8px"><input id="eBonusCount" type="number" min="1" value="20" /><button type="button" class="btn btn-ghost btn-sm" id="eBonusGen" style="white-space:nowrap">🎲 Generar</button></div></div>
+          </div>
+          <label>Números premiados (separados por coma)</label>
+          <textarea id="eBonus" rows="2" placeholder="Toca 🎲 Generar o escríbelos: 07, 23, 88"></textarea>
         </div>
         <div class="row">
           <div><label>Modalidad</label><select id="eMode"><option value="both">Elegir números y al azar</option><option value="pick">Solo elegir números</option><option value="random">Solo al azar</option></select></div>
@@ -117,16 +132,7 @@
           <label class="pay-opt"><input type="checkbox" id="ePayTransfer" /><span><b>Transferencia bancaria</b><small>El cliente sube la captura</small></span></label>
         </div>
         <div id="bankWrap" class="hidden">
-          <p class="muted" style="font-size:13px;margin:14px 0 0">Datos de la cuenta · el cliente los verá al pagar. Llena solo los que quieras.</p>
-          <div class="row">
-            <div><label>Banco</label><input id="bBank" placeholder="Banco Popular" /></div>
-            <div><label>Tipo de cuenta</label><select id="bType"><option value="">—</option><option>Ahorro</option><option>Corriente</option></select></div>
-          </div>
-          <div class="row">
-            <div><label>Número de cuenta</label><input id="bNumber" inputmode="numeric" placeholder="000-000000-0" /></div>
-            <div><label>A nombre de</label><input id="bHolder" placeholder="Wanderlin ..." /></div>
-          </div>
-          <label>Cédula / RNC</label><input id="bId" placeholder="000-0000000-0" />
+          <p class="muted" style="font-size:13px;margin:10px 0 0">El cliente elegirá entre tus cuentas activas de <a href="#" id="eBanksLink">🏦 Cuentas bancarias</a> (<span id="eBanksCount">0</span> activas).</p>
         </div>
         <label>Estado</label>
         <select id="eStatus"><option value="draft">Borrador (oculta)</option><option value="active">Activa (a la venta)</option><option value="closed">Venta cerrada</option></select>
@@ -152,6 +158,33 @@
         <div id="mErr" class="err hidden"></div>
         <div class="row" style="margin-top:16px"><button type="button" class="btn btn-ghost" data-close>Cancelar</button><button class="btn btn-gold">Registrar venta</button></div>
       </form>
+    </div>
+  </div>
+
+  <!-- MODAL CUENTAS BANCARIAS -->
+  <div class="modal wide hidden" id="banksModal">
+    <div class="card">
+      <h2>Cuentas bancarias</h2>
+      <p class="muted" style="margin-top:0;font-size:14px">Los clientes que paguen por transferencia elegirán una de estas cuentas. Solo el banco es obligatorio.</p>
+      <div id="banksList"></div>
+      <form id="bankForm" class="form-section">
+        <b id="bankFormTitle">Agregar cuenta</b>
+        <div class="row">
+          <div><label>Banco</label><select id="bBank" required></select></div>
+          <div><label>Tipo de cuenta</label><select id="bType"><option value="">—</option><option>Ahorro</option><option>Corriente</option></select></div>
+        </div>
+        <div class="row">
+          <div><label>Número de cuenta / correo</label><input id="bNumber" placeholder="000-000000-0" /></div>
+          <div><label>A nombre de</label><input id="bHolder" placeholder="Wanderlin ..." /></div>
+        </div>
+        <label>Cédula / RNC</label><input id="bId" placeholder="000-0000000-0" />
+        <div id="bErr" class="err hidden"></div>
+        <div class="row" style="margin-top:14px">
+          <button type="button" class="btn btn-ghost" id="bCancel">Limpiar</button>
+          <button class="btn btn-gold" id="bSave">Guardar cuenta</button>
+        </div>
+      </form>
+      <button class="btn btn-ghost btn-block" data-close style="margin-top:12px">Cerrar</button>
     </div>
   </div>
 

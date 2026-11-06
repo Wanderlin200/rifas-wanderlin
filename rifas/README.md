@@ -102,3 +102,12 @@ Al crear o editar una rifa eliges **Pago electrónico**, **Transferencia bancari
 
 Los comprobantes se guardan en un almacenamiento privado de Supabase (`comprobantes`) que solo ve el administrador.
 Si ya tenías la base de datos instalada, ejecuta una vez `supabase/actualizacion-transferencias.sql`.
+
+## v3: Números premiados, paquetes, cuentas bancarias y verificador
+
+Ejecuta una vez `supabase/actualizacion-v3.sql`.
+
+- **Números premiados:** en cada rifa escribe el premio (ej. RD$5,000) y genera o escribe los números. En la rifa se muestran y se marcan "¡SALIÓ!" al venderse; en el panel ves quién se los ganó.
+- **Paquetes y compra mínima:** cantidades separadas por coma (ej. 2, 5, 10, 25, 50, 100) y la compra mínima por rifa.
+- **Cuentas bancarias:** Panel → 🏦 Cuentas bancarias. El cliente elige a cuál transfirió y lo ves al revisar el comprobante.
+- **Verificador:** `/verificador.html`. El cliente escribe su teléfono y ve sus números, el estado del pago y si le salió un número premiado.

@@ -51,13 +51,18 @@ async function init() {
   $('#search').oninput = onSearch;
   $('#lucky').onclick = lucky;
 
-  // Aleatorio
-  const max = r.max_per_order;
-  $('#qty').max = max;
-  [1, 3, 5, 10, 20].filter((n) => n <= max).forEach((n) =>
-    $('#quick').insertAdjacentHTML('beforeend', `<button class="btn btn-ghost btn-sm" data-q="${n}">${n} boletos</button>`));
-  $$('#quick button').forEach((b) => (b.onclick = () => { $('#qty').value = b.dataset.q; updateSummary(); }));
-  $('#minus').onclick = () => { $('#qty').value = Math.max(1, +$('#qty').value - 1); updateSummary(); };
+  // Aleatorio: paquetes + cantidad personalizada
+  const max = r.max_per_order, min = minQty();
+  $('#qty').max = max; $('#qty').min = min; $('#qty').value = min;
+  $('#minNote').textContent = `Compra mínima: ${min} número${min === 1 ? '' : 's'} · máximo ${max}`;
+  const pk = (r.packages || []).filter((n) => n >= min && n <= max);
+  $('#pkgs').innerHTML = pk.map((n, i) => {
+    const tag = pk.length >= 4 && i === pk.length - 1 ? 'MÁXIMO' : pk.length >= 4 && i === pk.length - 2 ? 'VIP' : i === Math.min(2, pk.length - 1) && pk.length >= 3 ? '★ POPULAR' : '';
+    return `<button type="button" class="pkg" data-q="${n}">${tag ? `<i>${tag}</i>` : ''}<b>${n}</b><span>NÚMEROS</span><em>${money(n * r.ticket_price, r.currency)}</em></button>`;
+  }).join('');
+  $('#pkgs').previousElementSibling.classList.toggle('hidden', !pk.length);
+  $$('#pkgs .pkg').forEach((b) => (b.onclick = () => { $('#qty').value = b.dataset.q; updateSummary(); }));
+  $('#minus').onclick = () => { $('#qty').value = Math.max(min, +$('#qty').value - 1); updateSummary(); };
   $('#plus').onclick = () => { $('#qty').value = Math.min(max, +$('#qty').value + 1); updateSummary(); };
   $('#qty').oninput = updateSummary;
 
@@ -74,12 +79,35 @@ async function init() {
   $('#demoOk').onclick = () => demoPay(true);
   $('#demoNo').onclick = () => demoPay(false);
 
+  // Si la rifa permite ambas modalidades y tiene paquetes, se muestran primero los paquetes
+  if (r.mode === 'both' && $$('#pkgs .pkg').length) setMode('random');
   await loadBlock(0);
   updateSummary();
   setInterval(() => { if (mode === 'pick') loadBlock(blockStart, true); refreshStats(); }, 20000);
 }
 
+// Números premiados: se marcan "¡SALIÓ!" cuando alguien los compra
+async function renderBonus() {
+  const nums = R.bonus_numbers || [];
+  if (!nums.length) return;
+  const { data } = await sb.from('tickets').select('number').eq('raffle_id', R.id).eq('status', 'sold').in('number', nums);
+  if (data) data.splice(0, data.length, ...data.filter((t) => !t.status || t.status === 'sold'));
+  const out = new Set((data || []).map((t) => t.number).filter((n) => nums.includes(n)));
+  const box = $('#bonusBox');
+  box.classList.remove('hidden');
+  box.innerHTML = `<div class="crown">👑</div>
+    <h4>Si te sale uno de estos números ganas</h4>
+    <div class="amount">${esc(R.bonus_prize || '')}</div>
+    <div class="bonus-grid">${nums.map((n) => out.has(n)
+      ? `<div class="bonus-num out"><s>${pad(n, R.total_tickets)}</s><small>👑 ¡SALIÓ!</small></div>`
+      : `<div class="bonus-num">${pad(n, R.total_tickets)}</div>`).join('')}</div>
+    <div class="muted" style="font-size:13px">Quedan <b style="color:var(--text)">${nums.length - out.size} de ${nums.length}</b> · ${R.mode === 'pick' ? 'búscalos en la cuadrícula' : 'se asignan al azar al comprar'}</div>`;
+}
+
 async function refreshStats() {
+  renderBonus();
+  const mn = minQty();
+  $('#minLabel').textContent = mn > 1 ? `Mín: ${mn} números` : '';
   const st = await ticketStats(R.id);
   const pct = Math.round((st.sold / R.total_tickets) * 100);
   $('#bar').style.width = pct + '%';
@@ -159,12 +187,15 @@ function setPayMethod(m) {
   updateSummary();
 }
 
+function minQty() { return Math.max(1, R.min_per_order || 1); }
+
 function updateSummary() {
-  const c = count();
+  const c = count(), min = minQty();
+  $$('#pkgs .pkg').forEach((b) => b.classList.toggle('on', mode === 'random' && +b.dataset.q === c));
   $('#countLabel').textContent = `${c} boleto${c === 1 ? '' : 's'}`;
   $('#total').textContent = money(c * R.ticket_price, R.currency);
-  $('#payBtn').disabled = c < 1;
-  $('#payBtn').textContent = !c ? 'Elige al menos un boleto'
+  $('#payBtn').disabled = c < min;
+  $('#payBtn').textContent = c < min ? (min > 1 ? `Compra mínima: ${min} números${mode === 'pick' && c ? ` (llevas ${c})` : ''}` : 'Elige al menos un boleto')
     : payMethod === 'transfer' ? `Reservar y pagar por transferencia (${money(c * R.ticket_price, R.currency)})`
     : `Pagar ${money(c * R.ticket_price, R.currency)}`;
   const nums = [...selected].sort((a, b) => a - b);

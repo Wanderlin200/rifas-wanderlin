@@ -93,33 +93,39 @@ function openEdit(r) {
   $('#eCur').value = r?.currency || 'DOP';
   $('#eTotal').value = r?.total_tickets || 100;
   $('#eTotal').disabled = !!r;
-  $('#eMax').value = r?.max_per_order || 50;
+  $('#eMax').value = r?.max_per_order || 100;
+  $('#eMin').value = r?.min_per_order || 1;
+  $('#ePkgs').value = (r?.packages || [2, 5, 10, 25, 50, 100]).join(', ');
+  $('#eBonusPrize').value = r?.bonus_prize || '';
+  $('#eBonus').value = (r?.bonus_numbers || []).map((n) => pad(n, r.total_tickets)).join(', ');
   $('#eMode').value = r?.mode || 'both';
   $('#eDate').value = r?.draw_date ? new Date(new Date(r.draw_date).getTime() - new Date().getTimezoneOffset() * 60000).toISOString().slice(0, 16) : '';
   $('#eStatus').value = r?.status === 'drawn' ? 'closed' : r?.status || 'draft';
   $('#eStatus').disabled = r?.status === 'drawn';
   $('#ePayOnline').checked = r ? r.pay_online !== false : true;
   $('#ePayTransfer').checked = !!r?.pay_transfer;
-  fillBank(r?.bank_info);
   syncPayOpts();
+  refreshBankCount();
   openModal('editModal');
 }
 
-// Datos bancarios: casillas separadas que se guardan como "Etiqueta: valor" (una por línea)
-const BANK_FIELDS = [['bBank', 'Banco'], ['bType', 'Tipo de cuenta'], ['bNumber', 'Número de cuenta'], ['bHolder', 'A nombre de'], ['bId', 'Cédula / RNC']];
-function fillBank(text) {
-  BANK_FIELDS.forEach(([id]) => ($('#' + id).value = ''));
-  (text || '').split('\n').forEach((line) => {
-    const i = line.indexOf(':');
-    const label = i > 0 ? line.slice(0, i).trim() : '', value = i > 0 ? line.slice(i + 1).trim() : line.trim();
-    const f = BANK_FIELDS.find(([, l]) => l.toLowerCase() === label.toLowerCase());
-    if (f) $('#' + f[0]).value = value;
-    else if (value && !$('#bBank').value) $('#bBank').value = value; // texto antiguo sin etiqueta
-  });
+const parseNums = (txt) => [...new Set(String(txt || '').split(/[^0-9]+/).filter(Boolean).map((n) => parseInt(n, 10)))];
+
+// Generar números premiados al azar (sin repetir)
+$('#eBonusGen').onclick = () => {
+  const total = editing ? editing.total_tickets : +$('#eTotal').value;
+  const n = Math.min(Math.max(1, +$('#eBonusCount').value || 1), total);
+  const set = new Set();
+  while (set.size < n) set.add(Math.floor(Math.random() * total));
+  $('#eBonus').value = [...set].sort((a, b) => a - b).map((x) => pad(x, total)).join(', ');
+};
+
+async function refreshBankCount() {
+  const { count } = await sb.from('bank_accounts').select('id', { count: 'exact', head: true }).eq('active', true);
+  $('#eBanksCount').textContent = count || 0;
+  return count || 0;
 }
-function bankText() {
-  return BANK_FIELDS.map(([id, l]) => [l, $('#' + id).value.trim()]).filter(([, v]) => v).map(([l, v]) => `${l}: ${v}`).join('\n');
-}
+$('#eBanksLink').onclick = (e) => { e.preventDefault(); openBanks(); };
 
 function syncPayOpts() {
   $$('#editModal .pay-opt').forEach((o) => o.classList.toggle('on', o.querySelector('input').checked));
@@ -133,9 +139,16 @@ $('#editForm').onsubmit = async (e) => {
   if (!$('#ePayOnline').checked && !$('#ePayTransfer').checked) {
     $('#eErr').textContent = 'Elige al menos una forma de pago.'; $('#eErr').classList.remove('hidden'); return;
   }
-  if ($('#ePayTransfer').checked && !bankText()) {
-    $('#eErr').textContent = 'Llena al menos un dato de la cuenta (por ejemplo, el nombre).'; $('#eErr').classList.remove('hidden'); return;
-  }
+  const fail = (m) => { $('#eErr').textContent = m; $('#eErr').classList.remove('hidden'); };
+  if ($('#ePayTransfer').checked && !(await refreshBankCount())) return fail('Agrega al menos una cuenta en 🏦 Cuentas bancarias para recibir transferencias.');
+  const total = editing ? editing.total_tickets : +$('#eTotal').value;
+  const min = +$('#eMin').value || 1, max = +$('#eMax').value || 1;
+  if (min > max) return fail('La compra mínima no puede ser mayor que el máximo por compra.');
+  const packages = parseNums($('#ePkgs').value).filter((n) => n >= min && n <= max).sort((a, b) => a - b);
+  const bonus = parseNums($('#eBonus').value);
+  const bad = bonus.filter((n) => n >= total);
+  if (bad.length) return fail(`Estos números premiados no existen en la rifa (máximo ${pad(total - 1, total)}): ${bad.join(', ')}`);
+  if (bonus.length && !$('#eBonusPrize').value.trim()) return fail('Escribe el premio de los números premiados (ej. RD$5,000).');
   const btn = $('#eSave'); btn.disabled = true; btn.textContent = 'Guardando…';
   try {
     let image_url = editing?.image_url || null;
@@ -151,7 +164,8 @@ $('#editForm').onsubmit = async (e) => {
       description: $('#eDesc').value, image_url, ticket_price: +$('#ePrice').value, currency: $('#eCur').value,
       max_per_order: +$('#eMax').value, mode: $('#eMode').value,
       pay_online: $('#ePayOnline').checked, pay_transfer: $('#ePayTransfer').checked,
-      bank_info: bankText() || null,
+      min_per_order: min, packages, bonus_numbers: bonus.sort((a, b) => a - b),
+      bonus_prize: $('#eBonusPrize').value.trim() || null,
       draw_date: $('#eDate').value ? new Date($('#eDate').value).toISOString() : null,
     };
     if (editing?.status !== 'drawn') row.status = $('#eStatus').value;
@@ -167,6 +181,71 @@ $('#editForm').onsubmit = async (e) => {
     $('#eErr').textContent = err.message.includes('duplicate') ? 'Ese enlace (slug) ya existe, usa otro.' : err.message;
     $('#eErr').classList.remove('hidden');
   } finally { btn.disabled = false; btn.textContent = 'Guardar'; }
+};
+
+// ---------------- CUENTAS BANCARIAS ----------------
+let bankEditing = null;
+$('#bBank').innerHTML = BANKS.map((b) => `<option>${b.name}</option>`).join('');
+$('#banksBtn').onclick = () => openBanks();
+
+async function openBanks() {
+  openModal('banksModal');
+  resetBankForm();
+  await renderBanks();
+}
+async function renderBanks() {
+  const { data } = await sb.from('bank_accounts').select('*').order('sort').order('created_at');
+  const list = data || [];
+  $('#banksList').innerHTML = list.length ? list.map((b) => `
+    <div class="bank-item" style="${b.active ? '' : 'opacity:.45'}">
+      ${bankLogo(b.bank)}
+      <div class="info"><b>${esc(b.bank)}</b>${b.acc_type ? ` · ${esc(b.acc_type)}` : ''}
+        <small>${[b.number, b.holder, b.id_doc].filter(Boolean).map(esc).join(' · ') || 'Sin más datos'}</small></div>
+      <div class="actions">
+        <button class="btn btn-ghost btn-sm" data-bedit="${b.id}">Editar</button>
+        <button class="btn btn-ghost btn-sm" data-btoggle="${b.id}">${b.active ? 'Ocultar' : 'Mostrar'}</button>
+        <button class="btn btn-ghost btn-sm" data-bdel="${b.id}" style="color:var(--red)">Borrar</button>
+      </div>
+    </div>`).join('') : '<div class="empty" style="padding:24px">Aún no tienes cuentas. Agrega la primera abajo.</div>';
+  $$('[data-bedit]').forEach((x) => (x.onclick = () => {
+    const b = list.find((y) => y.id === x.dataset.bedit);
+    bankEditing = b;
+    $('#bankFormTitle').textContent = 'Editar cuenta';
+    if (!BANKS.some((k) => k.name === b.bank)) $('#bBank').insertAdjacentHTML('beforeend', `<option>${esc(b.bank)}</option>`);
+    $('#bBank').value = b.bank; $('#bType').value = b.acc_type || ''; $('#bNumber').value = b.number || '';
+    $('#bHolder').value = b.holder || ''; $('#bId').value = b.id_doc || '';
+    $('#bankForm').scrollIntoView({ behavior: 'smooth', block: 'center' });
+  }));
+  $$('[data-btoggle]').forEach((x) => (x.onclick = async () => {
+    const b = list.find((y) => y.id === x.dataset.btoggle);
+    await sb.from('bank_accounts').update({ active: !b.active }).eq('id', b.id);
+    renderBanks(); refreshBankCount();
+  }));
+  $$('[data-bdel]').forEach((x) => (x.onclick = async () => {
+    if (!confirm('¿Borrar esta cuenta?')) return;
+    await sb.from('bank_accounts').delete().eq('id', x.dataset.bdel);
+    renderBanks(); refreshBankCount();
+  }));
+}
+function resetBankForm() {
+  bankEditing = null;
+  $('#bankForm').reset();
+  $('#bankFormTitle').textContent = 'Agregar cuenta';
+  $('#bErr').classList.add('hidden');
+}
+$('#bCancel').onclick = resetBankForm;
+$('#bankForm').onsubmit = async (e) => {
+  e.preventDefault();
+  const row = {
+    bank: $('#bBank').value, acc_type: $('#bType').value || null, number: $('#bNumber').value.trim() || null,
+    holder: $('#bHolder').value.trim() || null, id_doc: $('#bId').value.trim() || null,
+  };
+  const q = bankEditing ? sb.from('bank_accounts').update(row).eq('id', bankEditing.id) : sb.from('bank_accounts').insert(row);
+  const { error } = await q;
+  if (error) { $('#bErr').textContent = error.message; $('#bErr').classList.remove('hidden'); return; }
+  toast('Cuenta guardada');
+  resetBankForm();
+  renderBanks(); refreshBankCount();
 };
 
 // ---------------- ELIMINAR ----------------
@@ -244,7 +323,24 @@ async function openRaffle(id) {
   $('#aDraw') && ($('#aDraw').onclick = openWheel);
   $('#aWinner') && ($('#aWinner').onclick = showSavedWinner);
 
+  renderBonus();
   renderOrders();
+}
+
+function renderBonus() {
+  const nums = current.bonus_numbers || [];
+  const box = $('#rBonus');
+  if (!nums.length) return box.classList.add('hidden');
+  const T = current.total_tickets;
+  const owner = {};
+  orders.filter((o) => o.status === 'paid').forEach((o) => o.numbers.forEach((n) => (owner[n] = o)));
+  const out = nums.filter((n) => owner[n]).length;
+  box.classList.remove('hidden');
+  box.innerHTML = `<div class="section-title" style="margin:0 0 6px"><h3 style="margin:0">👑 Números premiados · ${esc(current.bonus_prize || '')}</h3>
+      <span class="muted">${out} de ${nums.length} entregados</span></div>
+    <div class="bonus-grid" style="grid-template-columns:repeat(auto-fill,minmax(120px,1fr))">${nums.map((n) => owner[n]
+      ? `<div class="bonus-num out"><s>${pad(n, T)}</s><small>👑 ¡SALIÓ!</small><small class="who">${esc(owner[n].buyer_name)}<br>${esc(owner[n].buyer_phone)}</small></div>`
+      : `<div class="bonus-num">${pad(n, T)}</div>`).join('')}</div>`;
 }
 
 $('#fStatus').onchange = renderOrders;
@@ -264,8 +360,8 @@ function renderOrders() {
     <tr>
       <td class="muted">${o.order_number}</td>
       <td><b>${esc(o.buyer_name)}</b><br><a class="muted" href="https://wa.me/${o.buyer_phone.replace(/\D/g, '').replace(/^(8[024]9)/, '1$1')}" target="_blank">${esc(o.buyer_phone)}</a>${o.buyer_email ? `<br><span class="muted" style="font-size:12px">${esc(o.buyer_email)}</span>` : ''}</td>
-      <td class="nums-cell">${o.numbers.map((n) => pad(n, T)).join(', ') || '—'}</td>
-      <td>${money(o.amount, current.currency)}<br><span class="muted" style="font-size:12px">${METHOD[o.payment_method] || o.payment_method}${o.auth_code && o.auth_code !== 'MANUAL' ? ' · ' + esc(o.auth_code) : ''}</span></td>
+      <td class="nums-cell">${o.numbers.map((n) => (current.bonus_numbers || []).includes(n) ? `👑${pad(n, T)}` : pad(n, T)).join(', ') || '—'}</td>
+      <td>${money(o.amount, current.currency)}<br><span class="muted" style="font-size:12px">${METHOD[o.payment_method] || o.payment_method}${o.bank_account ? ' · ' + esc(o.bank_account) : ''}${o.auth_code && o.auth_code !== 'MANUAL' ? ' · ' + esc(o.auth_code) : ''}</span></td>
       <td>${badge(o.status)}${o.response_msg?.startsWith('REVISAR') ? `<br><span style="color:var(--red);font-size:12px">${esc(o.response_msg)}</span>` : ''}</td>
       <td class="muted" style="font-size:13px">${new Date(o.created_at).toLocaleString('es-DO', { dateStyle: 'short', timeStyle: 'short' })}</td>
       <td><div class="actions">${o.receipt_path ? `<button class="btn ${o.status === 'pending' ? 'btn-gold' : 'btn-ghost'} btn-sm" data-receipt="${o.id}">${o.status === 'pending' ? 'Revisar comprobante' : 'Ver comprobante'}</button>` : ''}
@@ -285,7 +381,7 @@ async function openReceipt(o) {
   reviewing = o;
   const T = current.total_tickets;
   $('#rcTitle').textContent = `Orden #${o.order_number}`;
-  $('#rcInfo').innerHTML = `${esc(o.buyer_name)} · ${esc(o.buyer_phone)}<br>Monto esperado: <b style="color:var(--text)">${money(o.amount, current.currency)}</b> · Números: ${o.numbers.map((n) => pad(n, T)).join(', ') || '—'}`;
+  $('#rcInfo').innerHTML = `${esc(o.buyer_name)} · ${esc(o.buyer_phone)}${o.bank_account ? `<br>Transfirió a: <b style="color:var(--text)">${esc(o.bank_account)}</b>` : ''}<br>Monto esperado: <b style="color:var(--text)">${money(o.amount, current.currency)}</b> · Números: ${o.numbers.map((n) => pad(n, T)).join(', ') || '—'}`;
   $('#rcImg').removeAttribute('src');
   $('#rcBtns').classList.toggle('hidden', o.status !== 'pending');
   openModal('receiptModal');

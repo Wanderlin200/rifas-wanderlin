@@ -40,3 +40,34 @@ function header() {
   if (y) y.textContent = new Date().getFullYear();
 }
 document.addEventListener('DOMContentLoaded', header);
+
+// ---------- Bancos (para elegir cuenta al transferir) ----------
+// Se muestran con sus iniciales y un color de referencia.
+const BANKS = [
+  { name: 'Banco Popular', short: 'BP', color: '#0a5ca8' },
+  { name: 'Banreservas', short: 'BR', color: '#1d4f91' },
+  { name: 'BHD', short: 'BHD', color: '#0b8a43' },
+  { name: 'Scotiabank', short: 'S', color: '#e3121b' },
+  { name: 'Asociación Popular (APAP)', short: 'AP', color: '#f08a00' },
+  { name: 'Banco Santa Cruz', short: 'SC', color: '#0f6e57' },
+  { name: 'Banesco', short: 'BN', color: '#0a9396' },
+  { name: 'Promerica', short: 'PR', color: '#2a9d3f' },
+  { name: 'Banco Caribe', short: 'BC', color: '#0b4f8a' },
+  { name: 'Banco BDI', short: 'BDI', color: '#7a1e48' },
+  { name: 'Banco Vimenca', short: 'V', color: '#c8102e' },
+  { name: 'Banco López de Haro', short: 'LH', color: '#14365d' },
+  { name: 'Banco Lafise', short: 'LF', color: '#16794a' },
+  { name: 'Asociación Cibao (ACAP)', short: 'AC', color: '#0067b1' },
+  { name: 'Asociación La Nacional', short: 'LN', color: '#004a8f' },
+  { name: 'Qik', short: 'Q', color: '#6c2bd9' },
+  { name: 'PayPal', short: 'PP', color: '#003087' },
+  { name: 'Otro', short: '$', color: '#3a3a3c' },
+];
+function bankInfo(name) {
+  return BANKS.find((b) => b.name === name) ||
+    { name, short: String(name || '?').split(/\s+/).map((w) => w[0]).join('').slice(0, 3).toUpperCase(), color: '#3a3a3c' };
+}
+function bankLogo(name) {
+  const b = bankInfo(name);
+  return `<span class="bank-logo" style="background:${b.color}">${esc(b.short)}</span>`;
+}

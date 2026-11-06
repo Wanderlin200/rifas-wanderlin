@@ -8,7 +8,7 @@
   <link rel="stylesheet" href="/assets/styles.css" />
 </head>
 <body>
-  <header class="top"><div class="wrap"><a class="logo" href="/"><img src="/assets/logo-wanderlin.png" alt="Wanderlin iPhone" /></a></div></header>
+  <header class="top"><div class="wrap"><a class="logo" href="/"><img src="/assets/logo-wanderlin.png" alt="Wanderlin iPhone" /></a><nav class="nav"><a href="/verificador.html">Verificador</a></nav></div></header>
   <main class="wrap">
     <div class="card result" id="box"><p class="muted">Verificando tu orden…</p></div>
   </main>
@@ -46,7 +46,9 @@
     }
 
     // Paso de transferencia: datos bancarios + subir captura
-    function transferStep(o) {
+    async function transferStep(o) {
+      const { data: accounts } = await sb.from('bank_accounts').select('*').eq('active', true).order('sort').order('created_at');
+      const accs = accounts || [];
       const limit = o.reserved_until ? new Date(o.reserved_until) : null;
       box.className = 'card result';
       box.style.maxWidth = '560px';
@@ -56,8 +58,11 @@
         ${chips(o)}
         ${limit ? `<p style="font-size:14px;color:#ffd60a;margin:0">⏳ Tienes hasta las ${limit.toLocaleTimeString('es-DO', { hour: 'numeric', minute: '2-digit' })} para subir tu comprobante, o los números se liberan.</p>` : ''}
         <div class="steps">
-          <h3><i>1</i> Transfiere exactamente ${money(o.amount, o.currency)}</h3>
-          <div class="bank-box">${bankRows(o.bank_info)}</div>
+          <h3><i>1</i> Elige la cuenta y transfiere exactamente ${money(o.amount, o.currency)}</h3>
+          ${accs.length ? `<div class="bank-pick">${accs.map((a, i) => `
+              <button type="button" class="bank-card" data-acc="${i}">${bankLogo(a.bank)}<span>${esc(a.bank)}</span>${a.acc_type ? `<small>${esc(a.acc_type)}</small>` : ''}</button>`).join('')}</div>
+            <div class="bank-box hidden" id="accBox" style="margin-top:10px"></div>`
+          : `<div class="bank-box">${bankRows(o.bank_info)}</div>`}
           <p class="muted" style="font-size:13px;margin:8px 0 0">En la descripción de la transferencia escribe: <b style="color:var(--text)">Orden ${o.order_number}</b></p>
           <h3><i>2</i> Sube la captura o foto de la transferencia</h3>
           <label class="upload" id="drop">
@@ -65,10 +70,25 @@
             <div id="preview"><b style="color:var(--text)">Toca aquí para adjuntar la imagen</b><br><span style="font-size:13px">JPG o PNG · captura de pantalla o foto</span></div>
           </label>
           <div id="err" class="err hidden"></div>
-          <button class="btn btn-gold btn-block" id="send" style="margin-top:14px" disabled>Enviar comprobante</button>
+          <button class="btn btn-gold btn-block" id="send" style="margin-top:14px" disabled>Adjunta la captura para enviar</button>
         </div>`;
 
-      let dataUrl = null;
+      let dataUrl = null, chosen = null;
+      const accText = (a) => [['Banco', a.bank], ['Tipo de cuenta', a.acc_type], ['Número de cuenta', a.number], ['A nombre de', a.holder], ['Cédula / RNC', a.id_doc]]
+        .filter(([, v]) => v).map(([l, v]) => `${l}: ${v}`).join('\n');
+      const canSend = () => {
+        const noBank = accs.length > 0 && !chosen;
+        $('#send').disabled = !dataUrl || noBank;
+        $('#send').textContent = noBank ? 'Elige la cuenta a la que transferiste' : !dataUrl ? 'Adjunta la captura para enviar' : 'Enviar comprobante';
+      };
+      $$('[data-acc]').forEach((b) => (b.onclick = () => {
+        chosen = accs[+b.dataset.acc];
+        $$('[data-acc]').forEach((x) => x.classList.toggle('on', x === b));
+        $('#accBox').innerHTML = bankRows(accText(chosen));
+        $('#accBox').classList.remove('hidden');
+        canSend();
+      }));
+      if (accs.length === 1) $('[data-acc="0"]').click(); else canSend();
       $('#file').onchange = async (e) => {
         const f = e.target.files[0];
         if (!f) return;
@@ -76,7 +96,7 @@
         try {
           dataUrl = await compress(f);
           $('#preview').innerHTML = `<img src="${dataUrl}" alt="Comprobante" /><span style="font-size:13px">Toca para cambiar la imagen</span>`;
-          $('#send').disabled = false;
+          canSend();
         } catch {
           showErr('No pudimos leer esa imagen. Prueba con otra captura.');
         }
@@ -87,7 +107,7 @@
         try {
           const res = await fetch('/api/subir-comprobante', {
             method: 'POST', headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ order_id: id, image: dataUrl }),
+            body: JSON.stringify({ order_id: id, image: dataUrl, bank: chosen ? [chosen.bank, chosen.number].filter(Boolean).join(' · ') : null }),
           });
           const d = await res.json();
           if (!res.ok) throw new Error(d.error || 'No se pudo enviar');

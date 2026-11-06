@@ -1,0 +1,95 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Verificador · {SITE}</title>
+  <meta name="description" content="Consulta tus números comprados con tu teléfono." />
+  <link rel="icon" href="/assets/favicon.png" />
+  <link rel="stylesheet" href="/assets/styles.css" />
+</head>
+<body>
+  <header class="top">
+    <div class="wrap">
+      <a class="logo" href="/"><img src="/assets/logo-wanderlin.png" alt="Wanderlin iPhone" /></a>
+      <nav class="nav"><a href="/">Rifas</a><a data-wa target="_blank" rel="noopener">WhatsApp</a></nav>
+    </div>
+  </header>
+
+  <main class="wrap" style="max-width:640px;padding-bottom:60px">
+    <section class="hero" style="padding-bottom:18px">
+      <h1 style="font-size:clamp(28px,6vw,42px)">Verifica tus <span>números</span></h1>
+      <p>Escribe el teléfono que usaste al comprar y verás todos tus boletos y el estado de tu pago.</p>
+    </section>
+
+    <form id="form" class="card panel" style="display:flex;gap:10px;align-items:flex-end;flex-wrap:wrap">
+      <div style="flex:1;min-width:200px">
+        <label for="phone" style="margin-top:0">Teléfono (los 10 dígitos)</label>
+        <input id="phone" type="tel" inputmode="tel" autocomplete="tel" required placeholder="809-555-5555" />
+      </div>
+      <button class="btn btn-gold" id="go">Buscar</button>
+    </form>
+
+    <div id="out" style="margin-top:16px"></div>
+  </main>
+
+  <footer><div class="wrap">© <span data-year></span> <span data-site></span></div></footer>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
+  <script src="/assets/config.js"></script>
+  <script src="/assets/comun.js"></script>
+  <script>
+    const STATE = {
+      paid: ['✓ Pagado', 'b-paid'],
+      pending: ['⏳ Pendiente', 'b-pending'],
+    };
+
+    $('#form').onsubmit = async (e) => {
+      e.preventDefault();
+      const phone = $('#phone').value;
+      const btn = $('#go');
+      btn.disabled = true; btn.textContent = 'Buscando…';
+      const { data, error } = await sb.rpc('lookup_tickets', { p_phone: phone });
+      btn.disabled = false; btn.textContent = 'Buscar';
+      if (error) return ($('#out').innerHTML = `<div class="err">${esc(error.message)}</div>`);
+      render(data || []);
+    };
+
+    function render(list) {
+      if (!list.length) {
+        $('#out').innerHTML = `<div class="empty">No encontramos compras con ese teléfono.<br>Revisa que sea el mismo número que escribiste al comprar.</div>`;
+        return;
+      }
+      $('#out').innerHTML = `<p class="muted" style="font-size:14px">${list.length} compra${list.length === 1 ? '' : 's'} encontrada${list.length === 1 ? '' : 's'}</p>` +
+        list.map((o) => {
+          const bonus = new Set(o.bonus_numbers || []);
+          const nums = o.numbers || [];
+          const bonusWins = nums.filter((n) => bonus.has(n));
+          const [label, cls] = STATE[o.status] || [o.status, ''];
+          let note = '';
+          if (o.status === 'pending' && o.method === 'transfer') {
+            note = o.has_receipt
+              ? '<p class="muted" style="font-size:13px;margin:8px 0 0">Recibimos tu comprobante. Tus números se confirman cuando verifiquemos la transferencia.</p>'
+              : `<p style="font-size:13px;margin:8px 0 0;color:#ffd60a">Falta subir el comprobante. <a href="/resultado.html?orden=${o.id}&estado=transferencia">Subirlo ahora →</a></p>`;
+          }
+          return `<div class="card lookup-card">
+            <div style="display:flex;justify-content:space-between;gap:10px;align-items:flex-start">
+              <div><b style="font-size:16px">${esc(o.title)}</b>
+                <div class="muted" style="font-size:13px">Orden #${o.order_number} · ${new Date(o.created_at).toLocaleDateString('es-DO', { day: 'numeric', month: 'short', year: 'numeric' })} · ${money(o.amount, o.currency)}</div></div>
+              <span class="badge ${cls}">${label}</span>
+            </div>
+            <div class="chips" style="margin-top:12px">${nums.map((n) => `<span class="chip ${bonus.has(n) ? 'win' : ''}">${bonus.has(n) ? '👑 ' : ''}${pad(n, o.total)}</span>`).join('')}</div>
+            ${bonusWins.length ? `<div class="winner-box" style="margin-top:12px;padding:14px"><b>👑 ¡Te salió ${bonusWins.length === 1 ? 'un número premiado' : bonusWins.length + ' números premiados'}!</b><div class="muted" style="font-size:13px">Ganas ${esc(o.bonus_prize || 'el premio')}${bonusWins.length > 1 ? ' por cada uno' : ''}${o.status === 'paid' ? '. Escríbenos por WhatsApp para reclamarlo.' : ' cuando se confirme tu pago.'}</div></div>` : ''}
+            ${o.won_number != null ? `<div class="winner-box" style="margin-top:12px;padding:14px"><b>🏆 ¡Ganaste la rifa con el número ${pad(o.won_number, o.total)}!</b></div>` : ''}
+            ${note}
+            <a class="muted" style="font-size:13px;display:inline-block;margin-top:10px" href="/rifa.html?r=${encodeURIComponent(o.slug)}">Ver rifa →</a>
+          </div>`;
+        }).join('');
+    }
+
+    // Permite abrir /verificador.html?tel=8095555555
+    const tel = new URLSearchParams(location.search).get('tel');
+    if (tel) { $('#phone').value = tel; $('#form').requestSubmit(); }
+  </script>
+</body>
+</html>

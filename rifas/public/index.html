@@ -15,6 +15,7 @@
       <nav class="nav">
         <a href="#activas">Rifas</a>
         <a href="#ganadores" class="hide-sm">Ganadores</a>
+        <a href="/verificador.html">Verificador</a>
         <a data-wa target="_blank" rel="noopener">WhatsApp</a>
       </nav>
     </div>
@@ -57,7 +58,8 @@
             <h3>${esc(r.title)}</h3>
             <div class="price">${money(r.ticket_price, r.currency)} <small>por boleto</small></div>
             <div class="progress"><div style="width:${pct}%"></div></div>
-            <div class="progress-label"><span>${pct}% vendido</span></div>
+            <div class="progress-label"><span>${pct}% vendido</span>${r.min_per_order > 1 ? `<span>Mín: ${r.min_per_order} números</span>` : ''}</div>
+            ${(r.bonus_numbers || []).length && r.status === 'active' ? `<div class="muted" style="font-size:13px">👑 ${r.bonus_numbers.length} números premiados${r.bonus_prize ? ' · ' + esc(r.bonus_prize) : ''}</div>` : ''}
           </div>
         </a>`;
     }

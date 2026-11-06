@@ -1,4 +1,4 @@
-// POST /api/subir-comprobante  { order_id, image: "data:image/jpeg;base64,..." }
+// POST /api/subir-comprobante  { order_id, bank, image: "data:image/jpeg;base64,..." }
 // Guarda la captura de la transferencia en un almacenamiento PRIVADO de Supabase
 // (solo el administrador puede verla) y aparta los números 72 horas mientras se verifica.
 const { env, rpc, sbHeaders, json } = require('../lib/comun');
@@ -39,7 +39,7 @@ exports.handler = async (event) => {
   }
 
   try {
-    await rpc('attach_receipt', { p_order_id: orderId, p_path: path });
+    await rpc('attach_receipt', { p_order_id: orderId, p_path: path, p_bank: String(body.bank || '').slice(0, 120) || null });
   } catch (e) {
     return json(409, { error: e.message });
   }
