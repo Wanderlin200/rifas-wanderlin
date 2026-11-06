@@ -100,9 +100,25 @@ function openEdit(r) {
   $('#eStatus').disabled = r?.status === 'drawn';
   $('#ePayOnline').checked = r ? r.pay_online !== false : true;
   $('#ePayTransfer').checked = !!r?.pay_transfer;
-  $('#eBank').value = r?.bank_info || '';
+  fillBank(r?.bank_info);
   syncPayOpts();
   openModal('editModal');
+}
+
+// Datos bancarios: casillas separadas que se guardan como "Etiqueta: valor" (una por línea)
+const BANK_FIELDS = [['bBank', 'Banco'], ['bType', 'Tipo de cuenta'], ['bNumber', 'Número de cuenta'], ['bHolder', 'A nombre de'], ['bId', 'Cédula / RNC']];
+function fillBank(text) {
+  BANK_FIELDS.forEach(([id]) => ($('#' + id).value = ''));
+  (text || '').split('\n').forEach((line) => {
+    const i = line.indexOf(':');
+    const label = i > 0 ? line.slice(0, i).trim() : '', value = i > 0 ? line.slice(i + 1).trim() : line.trim();
+    const f = BANK_FIELDS.find(([, l]) => l.toLowerCase() === label.toLowerCase());
+    if (f) $('#' + f[0]).value = value;
+    else if (value && !$('#bBank').value) $('#bBank').value = value; // texto antiguo sin etiqueta
+  });
+}
+function bankText() {
+  return BANK_FIELDS.map(([id, l]) => [l, $('#' + id).value.trim()]).filter(([, v]) => v).map(([l, v]) => `${l}: ${v}`).join('\n');
 }
 
 function syncPayOpts() {
@@ -117,8 +133,8 @@ $('#editForm').onsubmit = async (e) => {
   if (!$('#ePayOnline').checked && !$('#ePayTransfer').checked) {
     $('#eErr').textContent = 'Elige al menos una forma de pago.'; $('#eErr').classList.remove('hidden'); return;
   }
-  if ($('#ePayTransfer').checked && $('#eBank').value.trim().length < 10) {
-    $('#eErr').textContent = 'Escribe los datos de la cuenta bancaria para las transferencias.'; $('#eErr').classList.remove('hidden'); return;
+  if ($('#ePayTransfer').checked && !bankText()) {
+    $('#eErr').textContent = 'Llena al menos un dato de la cuenta (por ejemplo, el nombre).'; $('#eErr').classList.remove('hidden'); return;
   }
   const btn = $('#eSave'); btn.disabled = true; btn.textContent = 'Guardando…';
   try {
@@ -135,7 +151,7 @@ $('#editForm').onsubmit = async (e) => {
       description: $('#eDesc').value, image_url, ticket_price: +$('#ePrice').value, currency: $('#eCur').value,
       max_per_order: +$('#eMax').value, mode: $('#eMode').value,
       pay_online: $('#ePayOnline').checked, pay_transfer: $('#ePayTransfer').checked,
-      bank_info: $('#eBank').value.trim() || null,
+      bank_info: bankText() || null,
       draw_date: $('#eDate').value ? new Date($('#eDate').value).toISOString() : null,
     };
     if (editing?.status !== 'drawn') row.status = $('#eStatus').value;

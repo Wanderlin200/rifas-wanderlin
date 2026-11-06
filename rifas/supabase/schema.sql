@@ -495,3 +495,6 @@ drop policy if exists "comprobantes admin" on storage.objects;
 create policy "comprobantes admin" on storage.objects for all
   using (bucket_id = 'comprobantes' and public.is_admin())
   with check (bucket_id = 'comprobantes' and public.is_admin());
+
+-- Refrescar la caché de la API para que vea las columnas nuevas
+notify pgrst, 'reload schema';

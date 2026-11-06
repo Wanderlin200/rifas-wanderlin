@@ -57,7 +57,7 @@
         ${limit ? `<p style="font-size:14px;color:#ffd60a;margin:0">⏳ Tienes hasta las ${limit.toLocaleTimeString('es-DO', { hour: 'numeric', minute: '2-digit' })} para subir tu comprobante, o los números se liberan.</p>` : ''}
         <div class="steps">
           <h3><i>1</i> Transfiere exactamente ${money(o.amount, o.currency)}</h3>
-          <div class="bank-box">${esc(o.bank_info || 'Escríbenos por WhatsApp para recibir los datos de la cuenta.')}</div>
+          <div class="bank-box">${bankRows(o.bank_info)}</div>
           <p class="muted" style="font-size:13px;margin:8px 0 0">En la descripción de la transferencia escribe: <b style="color:var(--text)">Orden ${o.order_number}</b></p>
           <h3><i>2</i> Sube la captura o foto de la transferencia</h3>
           <label class="upload" id="drop">
@@ -133,6 +133,22 @@
                <a class="btn btn-ghost" target="_blank" style="margin-left:6px" href="${waLink(`Hola, tengo una consulta sobre la orden #${o.order_number}.`)}">WhatsApp</a>`
             : '<a class="btn btn-gold" href="/">Ver rifas</a>'}`;
     }
+
+    // Muestra "Etiqueta: valor" como filas, con botón para copiar cada dato
+    function bankRows(text) {
+      if (!text) return 'Escríbenos por WhatsApp para recibir los datos de la cuenta.';
+      return text.split('\n').filter((l) => l.trim()).map((line) => {
+        const i = line.indexOf(':');
+        const label = i > 0 ? line.slice(0, i) : '', value = i > 0 ? line.slice(i + 1).trim() : line.trim();
+        return `<div class="bank-row">${label ? `<span class="muted">${esc(label)}</span>` : '<span></span>'}
+          <b>${esc(value)}</b>${/número|cuenta$|cédula|rnc/i.test(label) && !/tipo/i.test(label) ? `<button type="button" class="btn btn-ghost btn-sm" data-copy="${esc(value)}">Copiar</button>` : '<span></span>'}</div>`;
+      }).join('');
+    }
+    document.addEventListener('click', (e) => {
+      const b = e.target.closest('[data-copy]');
+      if (!b) return;
+      navigator.clipboard?.writeText(b.dataset.copy).then(() => { b.textContent = '✓'; setTimeout(() => (b.textContent = 'Copiar'), 1500); });
+    });
 
     function showErr(m) { $('#err').textContent = m; $('#err').classList.remove('hidden'); }
 

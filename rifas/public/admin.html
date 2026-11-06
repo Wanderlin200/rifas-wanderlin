@@ -117,8 +117,16 @@
           <label class="pay-opt"><input type="checkbox" id="ePayTransfer" /><span><b>Transferencia bancaria</b><small>El cliente sube la captura</small></span></label>
         </div>
         <div id="bankWrap" class="hidden">
-          <label>Datos de la cuenta (el cliente los verá al pagar)</label>
-          <textarea id="eBank" rows="5" placeholder="Banco Popular&#10;Cuenta de ahorro: 000-000000-0&#10;A nombre de: Wanderlin ...&#10;Cédula/RNC: 000-0000000-0"></textarea>
+          <p class="muted" style="font-size:13px;margin:14px 0 0">Datos de la cuenta · el cliente los verá al pagar. Llena solo los que quieras.</p>
+          <div class="row">
+            <div><label>Banco</label><input id="bBank" placeholder="Banco Popular" /></div>
+            <div><label>Tipo de cuenta</label><select id="bType"><option value="">—</option><option>Ahorro</option><option>Corriente</option></select></div>
+          </div>
+          <div class="row">
+            <div><label>Número de cuenta</label><input id="bNumber" inputmode="numeric" placeholder="000-000000-0" /></div>
+            <div><label>A nombre de</label><input id="bHolder" placeholder="Wanderlin ..." /></div>
+          </div>
+          <label>Cédula / RNC</label><input id="bId" placeholder="000-0000000-0" />
         </div>
         <label>Estado</label>
         <select id="eStatus"><option value="draft">Borrador (oculta)</option><option value="active">Activa (a la venta)</option><option value="closed">Venta cerrada</option></select>
