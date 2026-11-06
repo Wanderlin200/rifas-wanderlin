@@ -264,3 +264,140 @@ footer { border-top: 1px solid var(--line); padding: 26px 0; color: var(--muted)
 .badge { font-size: 11px; font-weight: 700; padding: 3px 8px; border-radius: 99px; text-transform: uppercase; letter-spacing: .04em; white-space: nowrap; }
 .b-paid { background: rgba(48,209,88,.15); color: var(--green); }
 .b-pending { background: rgba(255,214,10,.14); color: #ffd60a; }
+
+/* Autocompletar del navegador: mantener el fondo oscuro */
+input:-webkit-autofill, input:-webkit-autofill:hover, input:-webkit-autofill:focus {
+  -webkit-text-fill-color: var(--text);
+  -webkit-box-shadow: 0 0 0 1000px var(--bg-2) inset;
+  caret-color: var(--text);
+}
+
+/* =====================================================================
+   TEMA "COLORES iPHONE" — azul, morado, rosado, naranja, verde y titanio
+   (este bloque va al final y reemplaza los colores anteriores)
+   ===================================================================== */
+:root {
+  --c-blue: #0a84ff; --c-indigo: #5e5ce6; --c-purple: #bf5af2; --c-pink: #ff375f;
+  --c-orange: #ff9f0a; --c-yellow: #ffd60a; --c-green: #30d158; --c-teal: #64d2ff; --c-titan: #a2a2a7;
+  --grad: linear-gradient(120deg, #0a84ff 0%, #5e5ce6 30%, #bf5af2 55%, #ff375f 80%, #ff9f0a 100%);
+  --grad-soft: linear-gradient(135deg, rgba(10,132,255,.18), rgba(191,90,242,.14) 50%, rgba(255,159,10,.12));
+  --gold: #64d2ff;
+  --line: #2a2a35;
+  --card: #0e0e14;
+  --bg-2: #15151d;
+}
+
+/* Fondo con auroras de color */
+body {
+  background:
+    radial-gradient(700px 420px at 12% -5%, rgba(10,132,255,.30), transparent 60%),
+    radial-gradient(640px 420px at 92% 4%, rgba(191,90,242,.28), transparent 60%),
+    radial-gradient(700px 500px at 50% 105%, rgba(255,55,95,.16), transparent 60%),
+    radial-gradient(500px 400px at 100% 60%, rgba(255,159,10,.10), transparent 60%),
+    #050508;
+  background-attachment: fixed;
+}
+.top { background: rgba(5,5,8,.7); border-bottom: 1px solid rgba(255,255,255,.07); }
+.top::after { content: ''; position: absolute; left: 0; right: 0; bottom: -1px; height: 1px; background: var(--grad); opacity: .7; }
+.top { position: sticky; }
+.nav a:hover { color: #fff; }
+
+/* Botón principal con degradado y brillo */
+.btn-gold {
+  background: var(--grad); background-size: 160% 100%; color: #fff;
+  box-shadow: 0 8px 24px -8px rgba(94,92,230,.75), 0 0 0 1px rgba(255,255,255,.08) inset;
+  transition: background-position .4s, transform .12s, box-shadow .2s;
+}
+.btn-gold:hover { background-position: 100% 0; filter: none; box-shadow: 0 10px 30px -6px rgba(191,90,242,.8); }
+.btn-gold[disabled] { box-shadow: none; }
+.btn-ghost:hover { border-color: var(--c-blue); }
+
+/* Títulos y precios con degradado */
+.hero h1 span, .price, .summary .total, .winner-box .n, .bonus .amount, .stat b {
+  background: var(--grad); -webkit-background-clip: text; background-clip: text; color: transparent;
+}
+.price small { -webkit-text-fill-color: var(--muted); }
+
+/* Tarjetas con borde de color */
+.card { background: linear-gradient(180deg, rgba(255,255,255,.035), rgba(255,255,255,.01)), var(--card); border-color: rgba(255,255,255,.08); }
+.raffle-card { position: relative; }
+.raffle-card::before {
+  content: ''; position: absolute; inset: 0; border-radius: inherit; padding: 1px; background: var(--grad); opacity: 0;
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0); -webkit-mask-composite: xor; mask-composite: exclude;
+  transition: opacity .2s; pointer-events: none;
+}
+.raffle-card:hover { border-color: transparent; box-shadow: 0 20px 50px -20px rgba(94,92,230,.7); }
+.raffle-card:hover::before { opacity: 1; }
+.tag { background: rgba(10,10,15,.7); border: 1px solid rgba(255,255,255,.12); }
+.tag.win { background: linear-gradient(120deg, var(--c-orange), var(--c-pink)); color: #fff; border: 0; }
+
+/* Barra de progreso */
+.progress { background: rgba(255,255,255,.06); }
+.progress > div { background: var(--grad); box-shadow: 0 0 12px rgba(191,90,242,.6); }
+
+/* Insignias de pago */
+.pay-badges span { border-color: rgba(255,255,255,.12); }
+
+/* Cuenta regresiva: cada caja de un color */
+.countdown div { background: var(--bg-2); }
+.countdown div:nth-child(1) b { color: var(--c-blue); }
+.countdown div:nth-child(2) b { color: var(--c-purple); }
+.countdown div:nth-child(3) b { color: var(--c-pink); }
+.countdown div:nth-child(4) b { color: var(--c-orange); }
+
+/* Pestañas */
+.tabs button.on { background: var(--grad); color: #fff; }
+
+/* Cuadrícula de números */
+.num:hover:not([disabled]) { border-color: var(--c-blue); box-shadow: 0 0 0 1px var(--c-blue) inset; }
+.num.sel { background: var(--grad); background-size: 300% 100%; color: #fff; border-color: transparent; box-shadow: 0 4px 14px -4px rgba(191,90,242,.8); }
+.num.hl { outline-color: var(--c-orange); }
+.legend i.s { background: var(--grad); border: 0; }
+
+/* Chips de números */
+.chip { background: rgba(10,132,255,.14); color: #9fd0ff; border-color: rgba(10,132,255,.4); }
+.chips .chip:nth-child(4n+2) { background: rgba(191,90,242,.14); color: #e2b6ff; border-color: rgba(191,90,242,.4); }
+.chips .chip:nth-child(4n+3) { background: rgba(255,55,95,.13); color: #ffadc0; border-color: rgba(255,55,95,.4); }
+.chips .chip:nth-child(4n+4) { background: rgba(255,159,10,.13); color: #ffcf85; border-color: rgba(255,159,10,.4); }
+.lookup-card .chip.win { background: linear-gradient(120deg, var(--c-orange), var(--c-pink)); color: #fff; border-color: transparent; }
+
+/* Paquetes: cada uno con un color de iPhone */
+.pkg { --pc: var(--c-blue); border-color: color-mix(in srgb, var(--pc) 45%, transparent); background: linear-gradient(180deg, color-mix(in srgb, var(--pc) 16%, transparent), transparent 70%), var(--bg-2); transition: transform .15s, box-shadow .15s; }
+.pkg:nth-child(7n+1) { --pc: var(--c-titan); }
+.pkg:nth-child(7n+2) { --pc: var(--c-green); }
+.pkg:nth-child(7n+3) { --pc: var(--c-blue); }
+.pkg:nth-child(7n+4) { --pc: var(--c-teal); }
+.pkg:nth-child(7n+5) { --pc: var(--c-purple); }
+.pkg:nth-child(7n+6) { --pc: var(--c-orange); }
+.pkg:nth-child(7n+7) { --pc: var(--c-pink); }
+.pkg b { color: var(--pc); text-shadow: 0 0 22px color-mix(in srgb, var(--pc) 55%, transparent); }
+.pkg:hover { transform: translateY(-2px); box-shadow: 0 10px 28px -12px var(--pc); }
+.pkg.on { border-color: var(--pc); box-shadow: 0 0 0 2px var(--pc) inset, 0 12px 30px -10px var(--pc); background: linear-gradient(180deg, color-mix(in srgb, var(--pc) 28%, transparent), transparent 80%), var(--bg-2); }
+.pkg i { background: var(--pc); color: #fff; box-shadow: 0 4px 12px -2px var(--pc); }
+
+/* Números premiados */
+.bonus { border-color: rgba(255,159,10,.45); background: linear-gradient(180deg, rgba(255,159,10,.14), rgba(255,55,95,.06) 60%, transparent); box-shadow: 0 0 40px -18px rgba(255,159,10,.8); }
+.bonus h4 { color: #ffd9a0; }
+.bonus .amount { background: linear-gradient(120deg, var(--c-yellow), var(--c-orange), var(--c-pink)); -webkit-background-clip: text; background-clip: text; }
+.bonus-num { border-color: rgba(255,159,10,.35); background: #0d0d12; }
+.bonus-num.out { background: linear-gradient(135deg, var(--c-orange), var(--c-pink)); color: #fff; border-color: transparent; box-shadow: 0 6px 18px -6px rgba(255,55,95,.8); }
+
+/* Métodos de pago y bancos */
+.pay-opt.on { border-color: var(--c-blue); background: linear-gradient(135deg, rgba(10,132,255,.16), rgba(191,90,242,.10)); box-shadow: 0 0 0 1px var(--c-blue) inset; }
+.pay-opt input:checked { background: var(--c-blue); border-color: var(--c-blue); }
+.pay-opt input:checked::after { color: #fff; }
+.pay-opt input[type="radio"]:checked::after { background: #fff; }
+.bank-card.on { border-color: var(--c-blue); background: linear-gradient(180deg, rgba(10,132,255,.18), transparent); box-shadow: 0 0 0 1px var(--c-blue) inset, 0 10px 26px -12px var(--c-blue); }
+.steps h3 i { background: var(--grad); color: #fff; }
+.upload:hover { border-color: var(--c-purple); }
+
+/* Cajas de ganador y resultados */
+.winner-box { background: linear-gradient(135deg, rgba(10,132,255,.18), rgba(191,90,242,.16) 50%, rgba(255,159,10,.14)); border-color: rgba(191,90,242,.45); }
+.ok .icon { background: rgba(48,209,88,.16); box-shadow: 0 0 30px -6px rgba(48,209,88,.7); }
+.bad .icon { box-shadow: 0 0 30px -6px rgba(255,69,58,.6); }
+.pending .icon { box-shadow: 0 0 30px -6px rgba(255,214,10,.6); }
+
+/* Campos */
+input:focus, select:focus, textarea:focus { border-color: var(--c-blue); box-shadow: 0 0 0 3px rgba(10,132,255,.2); }
+.form-section { border-color: rgba(191,90,242,.3); background: linear-gradient(180deg, rgba(191,90,242,.06), transparent); }
+footer { border-top-color: rgba(255,255,255,.07); }

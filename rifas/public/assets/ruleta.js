@@ -1,8 +1,8 @@
 // Ruleta animada. El ganador lo decide la base de datos (draw_winner);
 // la ruleta solo gira hasta detenerse en ese número.
 const Ruleta = (() => {
-  const LIGHT = ['#ffffff', '#e5e5ea', '#d1d1d6'];
-  const DARK = ['#1c1c1e', '#2c2c2e', '#0a0a0a'];
+  const LIGHT = ['#0a84ff', '#bf5af2', '#ff9f0a'];
+  const DARK = ['#5e5ce6', '#ff375f', '#30d158'];
   let canvas, ctx, labels = [], rot = 0, audio;
 
   function setup(el, items) {
@@ -25,7 +25,7 @@ const Ruleta = (() => {
       // texto
       ctx.save(); ctx.translate(c, c); ctx.rotate(a0 + seg / 2);
       ctx.textAlign = 'right'; ctx.textBaseline = 'middle';
-      ctx.fillStyle = isLight ? '#000000' : '#ffffff';
+      ctx.fillStyle = '#ffffff';
       const fs = Math.max(16, Math.min(46, (seg * r) * 0.55));
       ctx.font = `800 ${fs}px -apple-system, BlinkMacSystemFont, Inter, sans-serif`;
       ctx.fillText(labels[i], r - 22, 0);
@@ -35,7 +35,7 @@ const Ruleta = (() => {
     for (let i = 0; i < 36; i++) {
       const a = (i / 36) * Math.PI * 2;
       ctx.beginPath(); ctx.arc(c + Math.cos(a) * (r + 2), c + Math.sin(a) * (r + 2), 5, 0, Math.PI * 2);
-      ctx.fillStyle = i % 2 ? '#ffffff' : '#8e8e93'; ctx.fill();
+      ctx.fillStyle = ['#0a84ff', '#bf5af2', '#ff375f', '#ff9f0a', '#30d158', '#64d2ff'][i % 6]; ctx.fill();
     }
   }
 
@@ -82,7 +82,7 @@ const Ruleta = (() => {
       x: innerWidth / 2, y: innerHeight / 2.4,
       vx: (Math.random() - 0.5) * 18, vy: Math.random() * -18 - 4,
       s: 6 + Math.random() * 6, r: Math.random() * 6, vr: (Math.random() - 0.5) * 0.3,
-      col: ['#ffffff', '#e5e5ea', '#c7c7cc', '#8e8e93', '#f5f5f7', '#636366'][Math.floor(Math.random() * 6)],
+      col: ['#0a84ff', '#5e5ce6', '#bf5af2', '#ff375f', '#ff9f0a', '#30d158', '#64d2ff', '#ffd60a'][Math.floor(Math.random() * 6)],
     }));
     const t0 = performance.now();
     const loop = (now) => {
