@@ -42,12 +42,20 @@ async function init() {
 
   // Bloques de 100 números
   const sel = $('#block');
+  const blocks = Math.ceil(r.total_tickets / BLOCK);
   if (r.total_tickets <= BLOCK) sel.classList.add('hidden');
-  for (let a = 0; a < r.total_tickets; a += BLOCK) {
-    const b = Math.min(a + BLOCK - 1, r.total_tickets - 1);
-    sel.insertAdjacentHTML('beforeend', `<option value="${a}">${pad(a, r.total_tickets)} – ${pad(b, r.total_tickets)}</option>`);
+  else if (blocks <= 200) {
+    for (let a = 0; a < r.total_tickets; a += BLOCK) {
+      const b = Math.min(a + BLOCK - 1, r.total_tickets - 1);
+      sel.insertAdjacentHTML('beforeend', `<option value="${a}">${pad(a, r.total_tickets)} – ${pad(b, r.total_tickets)}</option>`);
+    }
+  } else {
+    // Rifas grandes: botones ‹ › y buscador en vez de una lista gigante
+    sel.outerHTML = `<div id="block" class="block-nav"><button type="button" class="btn btn-ghost btn-sm" id="prevB">‹</button><span id="blockLabel"></span><button type="button" class="btn btn-ghost btn-sm" id="nextB">›</button></div>`;
+    $('#prevB').onclick = () => loadBlock(Math.max(0, blockStart - BLOCK));
+    $('#nextB').onclick = () => loadBlock(Math.min((blocks - 1) * BLOCK, blockStart + BLOCK));
   }
-  sel.onchange = () => loadBlock(+sel.value);
+  if ($('#block').tagName === 'SELECT') $('#block').onchange = () => loadBlock(+$('#block').value);
   $('#search').oninput = onSearch;
   $('#lucky').onclick = lucky;
 
@@ -128,6 +136,7 @@ const isFree = (t) => t.status === 'available' || (t.status === 'reserved' && t.
 async function loadBlock(start, silent) {
   blockStart = start;
   const end = Math.min(start + BLOCK - 1, R.total_tickets - 1);
+  if ($('#blockLabel')) $('#blockLabel').textContent = `${pad(start, R.total_tickets)} – ${pad(end, R.total_tickets)}`;
   const { data } = await sb.from('tickets').select('number,status,reserved_until')
     .eq('raffle_id', R.id).gte('number', start).lte('number', end).order('number');
   blockData = data || [];
@@ -163,7 +172,7 @@ async function onSearch(e) {
   const n = parseInt(v, 10);
   if (n >= R.total_tickets) return;
   const start = Math.floor(n / BLOCK) * BLOCK;
-  if (start !== blockStart) { $('#block').value = start; await loadBlock(start); }
+  if (start !== blockStart) { if ($('#block').tagName === 'SELECT') $('#block').value = start; await loadBlock(start); }
   renderGrid(n);
 }
 

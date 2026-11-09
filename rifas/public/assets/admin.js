@@ -169,11 +169,21 @@ $('#editForm').onsubmit = async (e) => {
       draw_date: $('#eDate').value ? new Date($('#eDate').value).toISOString() : null,
     };
     if (editing?.status !== 'drawn') row.status = $('#eStatus').value;
-    const q = editing
-      ? sb.from('raffles').update(row).eq('id', editing.id)
-      : sb.from('raffles').insert({ ...row, total_tickets: +$('#eTotal').value });
-    const { error } = await q;
-    if (error) throw error;
+    if (editing) {
+      const { error } = await sb.from('raffles').update(row).eq('id', editing.id);
+      if (error) throw error;
+    } else {
+      const total = +$('#eTotal').value;
+      const big = total > 100000;
+      // Las rifas grandes se crean ocultas, se generan sus boletos por partes y luego se activan
+      const { data: created, error } = await sb.from('raffles')
+        .insert({ ...row, total_tickets: total, status: big ? 'draft' : row.status }).select('id').single();
+      if (error) throw error;
+      if (big) {
+        await generateTickets(created.id, (n) => (btn.textContent = `Creando boletos… ${Math.floor((n / total) * 100)}%`));
+        if (row.status !== 'draft') await sb.from('raffles').update({ status: row.status }).eq('id', created.id);
+      }
+    }
     closeModals();
     toast('Rifa guardada');
     current ? openRaffle(current.id) : loadList();
@@ -248,6 +258,22 @@ $('#bankForm').onsubmit = async (e) => {
   renderBanks(); refreshBankCount();
 };
 
+// ---------------- RIFAS GRANDES (más de 100,000 boletos) ----------------
+async function generateTickets(raffleId, onProgress) {
+  for (;;) {
+    const { data, error } = await sb.rpc('admin_generate_tickets', { p_raffle_id: raffleId, p_chunk: 50000 });
+    if (error) throw new Error('Se detuvo la creación de boletos: ' + error.message + '. Abre la rifa y toca "Completar boletos".');
+    onProgress?.(data.generated);
+    if (data.done) return;
+  }
+}
+async function ticketsMissing(r) {
+  if (r.total_tickets <= 100000) return 0;
+  const { data } = await sb.from('tickets').select('number').eq('raffle_id', r.id).order('number', { ascending: false }).limit(1);
+  const last = data?.[0]?.number ?? -1;
+  return r.total_tickets - (last + 1);
+}
+
 // ---------------- ELIMINAR ----------------
 // Borra la rifa con sus boletos, ventas y ganador (no se puede deshacer)
 async function deleteRaffle(r, paidCount) {
@@ -264,6 +290,17 @@ async function deleteRaffle(r, paidCount) {
 
   // Rutas de los comprobantes para borrarlos también
   const { data: rc } = await sb.from('orders').select('receipt_path').eq('raffle_id', r.id).not('receipt_path', 'is', null);
+  if (r.total_tickets > 100000) {
+    // Borrar boletos por partes para no pasar el tiempo límite
+    let left = r.total_tickets;
+    toast('Eliminando boletos… puede tardar unos segundos', 4000);
+    for (;;) {
+      const { data: n, error } = await sb.rpc('admin_delete_tickets', { p_raffle_id: r.id, p_chunk: 50000 });
+      if (error) return toast(error.message, 4000);
+      left -= n;
+      if (!n) break;
+    }
+  }
   const { error } = await sb.from('raffles').delete().eq('id', r.id);
   if (error) return toast(error.message, 4000);
 
@@ -285,6 +322,17 @@ async function openRaffle(id) {
   const { data: r } = await sb.from('raffles').select('*').eq('id', id).single();
   current = r;
   $('#rTitle').innerHTML = `${esc(r.title)} ${badge(r.status)}`;
+
+  // Si la creación de boletos de una rifa grande se interrumpió, permitir completarla
+  const missing = await ticketsMissing(r);
+  if (missing > 0) {
+    $('#rTitle').insertAdjacentHTML('beforeend', ` <button class="btn btn-gold btn-sm" id="fixTickets">Completar boletos (faltan ${missing.toLocaleString('es-DO')})</button>`);
+    $('#fixTickets').onclick = async () => {
+      const b = $('#fixTickets'); b.disabled = true;
+      try { await generateTickets(r.id, (n) => (b.textContent = `Creando… ${Math.floor((n / r.total_tickets) * 100)}%`)); toast('Boletos completos'); openRaffle(r.id); }
+      catch (e) { toast(e.message, 5000); b.disabled = false; }
+    };
+  }
 
   const [ord, tix] = await Promise.all([
     fetchAll(() => sb.from('orders').select('*').eq('raffle_id', id).order('created_at', { ascending: false })),

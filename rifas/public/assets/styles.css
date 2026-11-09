@@ -401,3 +401,6 @@ body {
 input:focus, select:focus, textarea:focus { border-color: var(--c-blue); box-shadow: 0 0 0 3px rgba(10,132,255,.2); }
 .form-section { border-color: rgba(191,90,242,.3); background: linear-gradient(180deg, rgba(191,90,242,.06), transparent); }
 footer { border-top-color: rgba(255,255,255,.07); }
+
+.block-nav { flex: 1 1 240px; min-width: 220px; display: flex; align-items: center; gap: 8px; }
+.block-nav span { flex: 1; text-align: center; white-space: nowrap; font: 600 13px Inter, sans-serif; background: var(--bg-2); border: 1px solid var(--line); border-radius: 10px; padding: 9px 6px; }
