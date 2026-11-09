@@ -404,3 +404,9 @@ footer { border-top-color: rgba(255,255,255,.07); }
 
 .block-nav { flex: 1 1 240px; min-width: 220px; display: flex; align-items: center; gap: 8px; }
 .block-nav span { flex: 1; text-align: center; white-space: nowrap; font: 600 13px Inter, sans-serif; background: var(--bg-2); border: 1px solid var(--line); border-radius: 10px; padding: 9px 6px; }
+
+.qr-box { text-align: center; padding: 14px 0 12px; }
+.qr-box + .bank-row, .qr-box + * { border-top: 1px solid var(--line); }
+.qr-box img { width: min(260px, 100%); margin: 0 auto 10px; border-radius: 14px; background: #fff; padding: 8px; box-shadow: 0 10px 30px -10px rgba(230,0,126,.6); }
+.qr-box p { margin: 0 0 10px; font-size: 14px; color: var(--muted); }
+.qr-box p b { color: var(--text); }

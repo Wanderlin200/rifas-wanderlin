@@ -98,7 +98,7 @@ function openEdit(r) {
   $('#ePkgs').value = (r?.packages || [2, 5, 10, 25, 50, 100]).join(', ');
   $('#eBonusPrize').value = r?.bonus_prize || '';
   $('#eBonus').value = (r?.bonus_numbers || []).map((n) => pad(n, r.total_tickets)).join(', ');
-  $('#eMode').value = r?.mode || 'both';
+  $('#eMode').value = 'random';
   $('#eDate').value = r?.draw_date ? new Date(new Date(r.draw_date).getTime() - new Date().getTimezoneOffset() * 60000).toISOString().slice(0, 16) : '';
   $('#eStatus').value = r?.status === 'drawn' ? 'closed' : r?.status || 'draft';
   $('#eStatus').disabled = r?.status === 'drawn';
@@ -210,7 +210,8 @@ async function renderBanks() {
     <div class="bank-item" style="${b.active ? '' : 'opacity:.45'}">
       ${bankLogo(b.bank)}
       <div class="info"><b>${esc(b.bank)}</b>${b.acc_type ? ` · ${esc(b.acc_type)}` : ''}
-        <small>${[b.number, b.holder, b.id_doc].filter(Boolean).map(esc).join(' · ') || 'Sin más datos'}</small></div>
+        <small>${[b.number, b.holder, b.id_doc].filter(Boolean).map(esc).join(' · ') || (b.qr_url ? 'Pago con QR' : 'Sin más datos')}${b.qr_url ? ' · 📷 QR' : ''}</small></div>
+      ${b.qr_url ? `<img src="${esc(b.qr_url)}" alt="QR" style="width:44px;height:44px;object-fit:cover;border-radius:8px;border:1px solid var(--line)" />` : ''}
       <div class="actions">
         <button class="btn btn-ghost btn-sm" data-bedit="${b.id}">Editar</button>
         <button class="btn btn-ghost btn-sm" data-btoggle="${b.id}">${b.active ? 'Ocultar' : 'Mostrar'}</button>
@@ -224,6 +225,7 @@ async function renderBanks() {
     if (!BANKS.some((k) => k.name === b.bank)) $('#bBank').insertAdjacentHTML('beforeend', `<option>${esc(b.bank)}</option>`);
     $('#bBank').value = b.bank; $('#bType').value = b.acc_type || ''; $('#bNumber').value = b.number || '';
     $('#bHolder').value = b.holder || ''; $('#bId').value = b.id_doc || '';
+    setQrPreview(b.qr_url);
     $('#bankForm').scrollIntoView({ behavior: 'smooth', block: 'center' });
   }));
   $$('[data-btoggle]').forEach((x) => (x.onclick = async () => {
@@ -237,18 +239,46 @@ async function renderBanks() {
     renderBanks(); refreshBankCount();
   }));
 }
+let qrFile = null, qrUrl = null;
+function setQrPreview(url) {
+  qrUrl = url || null; qrFile = null;
+  $('#bQrPreview').innerHTML = url
+    ? `<img src="${esc(url)}" alt="QR" /><span style="font-size:13px">Toca para cambiar la imagen</span>`
+    : '<b style="color:var(--text)">Toca para subir la imagen del QR</b><br><span style="font-size:13px">El cliente la verá y podrá escanearla</span>';
+  $('#bQrRemove').classList.toggle('hidden', !url);
+}
+$('#bQr').onchange = (e) => {
+  const f = e.target.files[0];
+  if (!f) return;
+  qrFile = f;
+  $('#bQrPreview').innerHTML = `<img src="${URL.createObjectURL(f)}" alt="QR" /><span style="font-size:13px">Toca para cambiar la imagen</span>`;
+  $('#bQrRemove').classList.remove('hidden');
+};
+$('#bQrRemove').onclick = () => { setQrPreview(null); $('#bQr').value = ''; };
+
 function resetBankForm() {
   bankEditing = null;
   $('#bankForm').reset();
+  setQrPreview(null);
   $('#bankFormTitle').textContent = 'Agregar cuenta';
   $('#bErr').classList.add('hidden');
 }
 $('#bCancel').onclick = resetBankForm;
 $('#bankForm').onsubmit = async (e) => {
   e.preventDefault();
+  const save = $('#bSave'); save.disabled = true;
+  let qr_url = qrUrl;
+  if (qrFile) {
+    // La imagen del QR se guarda en el almacenamiento público (el cliente debe poder verla)
+    const path = `qr/${Date.now()}-${slugify(qrFile.name.replace(/\.[^.]+$/, ''))}.${qrFile.name.split('.').pop()}`;
+    const { error: upErr } = await sb.storage.from('rifas').upload(path, qrFile, { upsert: false });
+    if (upErr) { save.disabled = false; $('#bErr').textContent = upErr.message; $('#bErr').classList.remove('hidden'); return; }
+    qr_url = sb.storage.from('rifas').getPublicUrl(path).data.publicUrl;
+  }
+  save.disabled = false;
   const row = {
     bank: $('#bBank').value, acc_type: $('#bType').value || null, number: $('#bNumber').value.trim() || null,
-    holder: $('#bHolder').value.trim() || null, id_doc: $('#bId').value.trim() || null,
+    holder: $('#bHolder').value.trim() || null, id_doc: $('#bId').value.trim() || null, qr_url,
   };
   const q = bankEditing ? sb.from('bank_accounts').update(row).eq('id', bankEditing.id) : sb.from('bank_accounts').insert(row);
   const { error } = await q;

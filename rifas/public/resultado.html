@@ -84,7 +84,13 @@
       $$('[data-acc]').forEach((b) => (b.onclick = () => {
         chosen = accs[+b.dataset.acc];
         $$('[data-acc]').forEach((x) => x.classList.toggle('on', x === b));
-        $('#accBox').innerHTML = bankRows(accText(chosen));
+        const hasRows = [chosen.acc_type, chosen.number, chosen.holder, chosen.id_doc].some(Boolean);
+        $('#accBox').innerHTML = (chosen.qr_url ? `
+          <div class="qr-box">
+            <img src="${esc(chosen.qr_url)}" alt="Código QR para pagar" />
+            <p>📱 Escanea este código con ${/toke/i.test(chosen.bank) ? 'la app <b>Toke</b>' : 'la app de tu banco'} y paga <b>${money(o.amount, o.currency)}</b></p>
+            <a class="btn btn-ghost btn-sm" href="${esc(chosen.qr_url)}" download target="_blank">Descargar código</a>
+          </div>` : '') + (hasRows || !chosen.qr_url ? bankRows(accText(chosen)) : '');
         $('#accBox').classList.remove('hidden');
         canSend();
       }));

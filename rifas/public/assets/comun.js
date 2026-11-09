@@ -44,6 +44,7 @@ document.addEventListener('DOMContentLoaded', header);
 // ---------- Bancos (para elegir cuenta al transferir) ----------
 // Se muestran con sus iniciales y un color de referencia.
 const BANKS = [
+  { name: 'Toke (Banco Popular)', short: 'TK', color: '#e6007e' },
   { name: 'Banco Popular', short: 'BP', color: '#0a5ca8' },
   { name: 'Banreservas', short: 'BR', color: '#1d4f91' },
   { name: 'BHD', short: 'BHD', color: '#0b8a43' },

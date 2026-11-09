@@ -16,6 +16,7 @@ async function init() {
   const { data: r } = await sb.from('raffles').select('*').eq('slug', slug).maybeSingle();
   if (!r) { $('#loading').textContent = 'Esta rifa no existe o ya no está disponible.'; return; }
   R = r;
+  R.mode = 'random'; // solo números al azar
   document.title = `${r.title} · ${CFG.SITE_NAME}`;
   $('#loading').classList.add('hidden');
   $('#detail').classList.remove('hidden');
